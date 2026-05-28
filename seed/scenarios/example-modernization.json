@@ -1,0 +1,615 @@
+{
+  "_comment": "ILLUSTRATIVE SEED SCENARIO. All rates and quantities are realistic placeholders, not market quotes. Edit before using in any real engagement. Vertex Retail is a fictional client.",
+  "_modelVersion": "1.0",
+  "_generatedAt": "2026-05-27T19:30:00Z",
+
+  "project": {
+    "id": "proj_vtx_modernization_2026",
+    "name": "Vertex Retail - Commerce Platform Modernization",
+    "client": "Vertex Retail Holdings, Inc.",
+    "sowReference": "VTX-SOW-2026-014",
+    "version": "1.0.0",
+    "status": "draft",
+
+    "engagementType": "FixedFee",
+    "engagementContext": "Modernization",
+
+    "baseCurrency": "USD",
+    "fxRates": {
+      "USD": 1.0,
+      "EUR": 0.93,
+      "GBP": 0.79,
+      "INR": 83.5,
+      "CAD": 1.36,
+      "AUD": 1.51,
+      "BRL": 5.05
+    },
+
+    "targetMarginPct": 25.0,
+    "discountPct": 0.0,
+    "contingencyPct": 8.0,
+    "managementReservePct": 3.0,
+
+    "phases": [
+      { "id": "ph_discovery", "name": "Discovery",  "order": 1, "durationWeeks": 4,  "offsetWeeks": 0,  "description": "Current-state assessment, target architecture, scope confirmation" },
+      { "id": "ph_design",    "name": "Design",     "order": 2, "durationWeeks": 6,  "offsetWeeks": 4,  "description": "Solution design, integration design, security review" },
+      { "id": "ph_build",     "name": "Build",      "order": 3, "durationWeeks": 16, "offsetWeeks": 10, "description": "Iterative development sprints" },
+      { "id": "ph_test",      "name": "Test",       "order": 4, "durationWeeks": 6,  "offsetWeeks": 22, "description": "SIT, UAT, performance, security testing" },
+      { "id": "ph_deploy",    "name": "Deploy",     "order": 5, "durationWeeks": 4,  "offsetWeeks": 28, "description": "Cutover, data migration, go-live" },
+      { "id": "ph_hypercare", "name": "Hypercare",  "order": 6, "durationWeeks": 8,  "offsetWeeks": 32, "description": "Post-go-live stabilization and KT to run team" }
+    ],
+
+    "activeScenarioId": "sc_base",
+    "baseScenarioId": "sc_base",
+
+    "ownerId": "user_demo_owner",
+    "orgId": "org_demo",
+    "createdAt": "2026-05-27T19:30:00Z",
+    "updatedAt": "2026-05-27T19:30:00Z"
+  },
+
+  "scenarios": [
+    {
+      "id": "sc_base",
+      "projectId": "proj_vtx_modernization_2026",
+      "name": "Base Case",
+      "description": "Recommended sourcing mix: ~30% onshore, ~25% nearshore, ~45% offshore. Mid-confidence cloud sizing pending Discovery findings.",
+      "isBase": true,
+      "order": 1,
+
+      "resources": [
+        {
+          "id": "res_eng_lead",
+          "scenarioId": "sc_base",
+          "role": "Engagement Lead",
+          "skillLevel": "Senior",
+          "geography": "US-Onshore",
+          "defaultAllocationPct": 50,
+          "allocations": [],
+          "billRate": { "amount": 285, "currency": "USD" },
+          "internalCostRate": { "amount": 195, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "name": "TBD",
+          "notes": "Single point of accountability across all phases.",
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_pm",
+          "scenarioId": "sc_base",
+          "role": "Project Manager",
+          "skillLevel": "Senior",
+          "geography": "US-Onshore",
+          "defaultAllocationPct": 100,
+          "allocations": [],
+          "billRate": { "amount": 215, "currency": "USD" },
+          "internalCostRate": { "amount": 140, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 90,
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_sol_arch",
+          "scenarioId": "sc_base",
+          "role": "Solution Architect",
+          "skillLevel": "Advisor",
+          "geography": "US-Onshore",
+          "defaultAllocationPct": 75,
+          "allocations": [
+            { "phaseId": "ph_discovery", "allocationPct": 100 },
+            { "phaseId": "ph_design",    "allocationPct": 100 },
+            { "phaseId": "ph_build",     "allocationPct": 50 },
+            { "phaseId": "ph_test",      "allocationPct": 25 },
+            { "phaseId": "ph_deploy",    "allocationPct": 25 },
+            { "phaseId": "ph_hypercare", "allocationPct": 10 }
+          ],
+          "billRate": { "amount": 325, "currency": "USD" },
+          "internalCostRate": { "amount": 215, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_cloud_arch",
+          "scenarioId": "sc_base",
+          "role": "Cloud Architect",
+          "skillLevel": "Senior",
+          "geography": "US-Onshore",
+          "defaultAllocationPct": 50,
+          "allocations": [
+            { "phaseId": "ph_discovery", "allocationPct": 75 },
+            { "phaseId": "ph_design",    "allocationPct": 100 },
+            { "phaseId": "ph_build",     "allocationPct": 50 },
+            { "phaseId": "ph_test",      "allocationPct": 25 },
+            { "phaseId": "ph_deploy",    "allocationPct": 50 },
+            { "phaseId": "ph_hypercare", "allocationPct": 25 }
+          ],
+          "billRate": { "amount": 275, "currency": "USD" },
+          "internalCostRate": { "amount": 180, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_ba",
+          "scenarioId": "sc_base",
+          "role": "Business Analyst",
+          "skillLevel": "Professional",
+          "geography": "US-Onshore",
+          "defaultAllocationPct": 75,
+          "allocations": [
+            { "phaseId": "ph_discovery", "allocationPct": 100 },
+            { "phaseId": "ph_design",    "allocationPct": 100 },
+            { "phaseId": "ph_build",     "allocationPct": 50 },
+            { "phaseId": "ph_test",      "allocationPct": 75 },
+            { "phaseId": "ph_deploy",    "allocationPct": 50 },
+            { "phaseId": "ph_hypercare", "allocationPct": 25 }
+          ],
+          "billRate": { "amount": 165, "currency": "USD" },
+          "internalCostRate": { "amount": 105, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_tech_lead",
+          "scenarioId": "sc_base",
+          "role": "Technical Lead",
+          "skillLevel": "Senior",
+          "geography": "LATAM-Nearshore",
+          "defaultAllocationPct": 100,
+          "allocations": [
+            { "phaseId": "ph_discovery", "allocationPct": 0 },
+            { "phaseId": "ph_design",    "allocationPct": 100 },
+            { "phaseId": "ph_build",     "allocationPct": 100 },
+            { "phaseId": "ph_test",      "allocationPct": 100 },
+            { "phaseId": "ph_deploy",    "allocationPct": 100 },
+            { "phaseId": "ph_hypercare", "allocationPct": 50 }
+          ],
+          "billRate": { "amount": 145, "currency": "USD" },
+          "internalCostRate": { "amount": 90, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_dev_senior_x2",
+          "scenarioId": "sc_base",
+          "role": "Full-Stack Engineer",
+          "skillLevel": "Senior",
+          "geography": "LATAM-Nearshore",
+          "defaultAllocationPct": 200,
+          "allocations": [
+            { "phaseId": "ph_discovery", "allocationPct": 0 },
+            { "phaseId": "ph_design",    "allocationPct": 100 },
+            { "phaseId": "ph_build",     "allocationPct": 200 },
+            { "phaseId": "ph_test",      "allocationPct": 200 },
+            { "phaseId": "ph_deploy",    "allocationPct": 100 },
+            { "phaseId": "ph_hypercare", "allocationPct": 50 }
+          ],
+          "billRate": { "amount": 115, "currency": "USD" },
+          "internalCostRate": { "amount": 72, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "notes": "2 senior engineers, allocation expressed as combined FTE (200%).",
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_dev_pro_x4",
+          "scenarioId": "sc_base",
+          "role": "Full-Stack Engineer",
+          "skillLevel": "Professional",
+          "geography": "India-Offshore",
+          "defaultAllocationPct": 400,
+          "allocations": [
+            { "phaseId": "ph_discovery", "allocationPct": 0 },
+            { "phaseId": "ph_design",    "allocationPct": 100 },
+            { "phaseId": "ph_build",     "allocationPct": 400 },
+            { "phaseId": "ph_test",      "allocationPct": 400 },
+            { "phaseId": "ph_deploy",    "allocationPct": 200 },
+            { "phaseId": "ph_hypercare", "allocationPct": 0 }
+          ],
+          "billRate": { "amount": 65, "currency": "USD" },
+          "internalCostRate": { "amount": 38, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "notes": "4 mid-level engineers based in Bangalore.",
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_devops",
+          "scenarioId": "sc_base",
+          "role": "DevOps Engineer",
+          "skillLevel": "Senior",
+          "geography": "LATAM-Nearshore",
+          "defaultAllocationPct": 50,
+          "allocations": [
+            { "phaseId": "ph_discovery", "allocationPct": 25 },
+            { "phaseId": "ph_design",    "allocationPct": 75 },
+            { "phaseId": "ph_build",     "allocationPct": 75 },
+            { "phaseId": "ph_test",      "allocationPct": 50 },
+            { "phaseId": "ph_deploy",    "allocationPct": 100 },
+            { "phaseId": "ph_hypercare", "allocationPct": 50 }
+          ],
+          "billRate": { "amount": 135, "currency": "USD" },
+          "internalCostRate": { "amount": 82, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_qa_lead",
+          "scenarioId": "sc_base",
+          "role": "Test Lead",
+          "skillLevel": "Senior",
+          "geography": "US-Onshore",
+          "defaultAllocationPct": 50,
+          "allocations": [
+            { "phaseId": "ph_discovery", "allocationPct": 0 },
+            { "phaseId": "ph_design",    "allocationPct": 50 },
+            { "phaseId": "ph_build",     "allocationPct": 50 },
+            { "phaseId": "ph_test",      "allocationPct": 100 },
+            { "phaseId": "ph_deploy",    "allocationPct": 75 },
+            { "phaseId": "ph_hypercare", "allocationPct": 25 }
+          ],
+          "billRate": { "amount": 195, "currency": "USD" },
+          "internalCostRate": { "amount": 125, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_qa_pro_x2",
+          "scenarioId": "sc_base",
+          "role": "QA Engineer",
+          "skillLevel": "Professional",
+          "geography": "India-Offshore",
+          "defaultAllocationPct": 200,
+          "allocations": [
+            { "phaseId": "ph_discovery", "allocationPct": 0 },
+            { "phaseId": "ph_design",    "allocationPct": 0 },
+            { "phaseId": "ph_build",     "allocationPct": 100 },
+            { "phaseId": "ph_test",      "allocationPct": 200 },
+            { "phaseId": "ph_deploy",    "allocationPct": 100 },
+            { "phaseId": "ph_hypercare", "allocationPct": 0 }
+          ],
+          "billRate": { "amount": 55, "currency": "USD" },
+          "internalCostRate": { "amount": 32, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "notes": "2 QA engineers in Bangalore.",
+          "billRateOverridden": false
+        },
+        {
+          "id": "res_ocm",
+          "scenarioId": "sc_base",
+          "role": "Operational Change Manager",
+          "skillLevel": "Senior",
+          "geography": "US-Onshore",
+          "defaultAllocationPct": 50,
+          "allocations": [
+            { "phaseId": "ph_discovery", "allocationPct": 25 },
+            { "phaseId": "ph_design",    "allocationPct": 50 },
+            { "phaseId": "ph_build",     "allocationPct": 50 },
+            { "phaseId": "ph_test",      "allocationPct": 50 },
+            { "phaseId": "ph_deploy",    "allocationPct": 100 },
+            { "phaseId": "ph_hypercare", "allocationPct": 75 }
+          ],
+          "billRate": { "amount": 225, "currency": "USD" },
+          "internalCostRate": { "amount": 145, "currency": "USD" },
+          "hoursPerWeek": 40,
+          "utilizationPct": 85,
+          "billRateOverridden": false
+        }
+      ],
+
+      "cloudLineItems": [
+        {
+          "id": "cli_aws_ec2_prod",
+          "scenarioId": "sc_base",
+          "provider": "aws",
+          "category": "Compute",
+          "service": "EC2",
+          "sku": "m6i.xlarge",
+          "region": "us-east-1",
+          "pricingModel": "Reserved1yr",
+          "environment": "prod",
+          "environmentMultiplier": 1.0,
+          "unitCost": { "amount": 105.50, "currency": "USD" },
+          "quantity": 8,
+          "unitName": "instance-month",
+          "rampCurve": "step",
+          "rampStartPhaseId": "ph_deploy",
+          "includeInRunRate": true,
+          "description": "Prod application tier - reserved for predictable load.",
+          "unitCostOverridden": false
+        },
+        {
+          "id": "cli_aws_ec2_nonprod",
+          "scenarioId": "sc_base",
+          "provider": "aws",
+          "category": "Compute",
+          "service": "EC2",
+          "sku": "m6i.large",
+          "region": "us-east-1",
+          "pricingModel": "OnDemand",
+          "environment": "dev",
+          "environmentMultiplier": 0.35,
+          "unitCost": { "amount": 71.00, "currency": "USD" },
+          "quantity": 6,
+          "unitName": "instance-month",
+          "rampCurve": "step",
+          "rampStartPhaseId": "ph_build",
+          "includeInRunRate": true,
+          "description": "Dev + test instances - on-demand for elasticity.",
+          "unitCostOverridden": false
+        },
+        {
+          "id": "cli_aws_rds_prod",
+          "scenarioId": "sc_base",
+          "provider": "aws",
+          "category": "Database",
+          "service": "RDS Aurora PostgreSQL",
+          "sku": "db.r6g.xlarge",
+          "region": "us-east-1",
+          "pricingModel": "Reserved1yr",
+          "environment": "prod",
+          "environmentMultiplier": 1.0,
+          "unitCost": { "amount": 285.00, "currency": "USD" },
+          "quantity": 2,
+          "unitName": "instance-month",
+          "rampCurve": "step",
+          "rampStartPhaseId": "ph_deploy",
+          "includeInRunRate": true,
+          "description": "Aurora multi-AZ for prod database.",
+          "unitCostOverridden": false
+        },
+        {
+          "id": "cli_aws_s3",
+          "scenarioId": "sc_base",
+          "provider": "aws",
+          "category": "Storage",
+          "service": "S3 Standard",
+          "region": "us-east-1",
+          "pricingModel": "OnDemand",
+          "environment": "prod",
+          "environmentMultiplier": 1.0,
+          "unitCost": { "amount": 23.00, "currency": "USD" },
+          "quantity": 4,
+          "unitName": "TB-month",
+          "rampCurve": "linear",
+          "includeInRunRate": true,
+          "description": "Application data, logs, static assets.",
+          "unitCostOverridden": false
+        },
+        {
+          "id": "cli_aws_cloudfront",
+          "scenarioId": "sc_base",
+          "provider": "aws",
+          "category": "Networking",
+          "service": "CloudFront",
+          "region": "global",
+          "pricingModel": "OnDemand",
+          "environment": "prod",
+          "environmentMultiplier": 1.0,
+          "unitCost": { "amount": 85.00, "currency": "USD" },
+          "quantity": 10,
+          "unitName": "TB-month",
+          "rampCurve": "step",
+          "rampStartPhaseId": "ph_deploy",
+          "includeInRunRate": true,
+          "description": "CDN egress at expected steady-state.",
+          "unitCostOverridden": false
+        },
+        {
+          "id": "cli_azure_aks",
+          "scenarioId": "sc_base",
+          "provider": "azure",
+          "category": "Compute",
+          "service": "AKS",
+          "sku": "D4s_v5",
+          "region": "eastus",
+          "pricingModel": "Reserved1yr",
+          "environment": "prod",
+          "environmentMultiplier": 1.0,
+          "unitCost": { "amount": 118.00, "currency": "USD" },
+          "quantity": 6,
+          "unitName": "node-month",
+          "rampCurve": "step",
+          "rampStartPhaseId": "ph_deploy",
+          "includeInRunRate": true,
+          "description": "AKS node pool for analytics workload (multi-cloud per client constraint).",
+          "unitCostOverridden": false
+        },
+        {
+          "id": "cli_azure_blob",
+          "scenarioId": "sc_base",
+          "provider": "azure",
+          "category": "Storage",
+          "service": "Blob Storage Hot",
+          "region": "eastus",
+          "pricingModel": "OnDemand",
+          "environment": "prod",
+          "environmentMultiplier": 1.0,
+          "unitCost": { "amount": 21.00, "currency": "USD" },
+          "quantity": 3,
+          "unitName": "TB-month",
+          "rampCurve": "linear",
+          "includeInRunRate": true,
+          "description": "Analytics data lake.",
+          "unitCostOverridden": false
+        },
+        {
+          "id": "cli_aws_observability",
+          "scenarioId": "sc_base",
+          "provider": "aws",
+          "category": "Observability",
+          "service": "CloudWatch + X-Ray",
+          "region": "us-east-1",
+          "pricingModel": "OnDemand",
+          "environment": "prod",
+          "environmentMultiplier": 1.0,
+          "unitCost": { "amount": 450.00, "currency": "USD" },
+          "quantity": 1,
+          "unitName": "stack-month",
+          "rampCurve": "step",
+          "rampStartPhaseId": "ph_build",
+          "includeInRunRate": true,
+          "description": "Bundled observability spend - logs, metrics, traces.",
+          "unitCostOverridden": false
+        }
+      ],
+
+      "otherCostLineItems": [
+        {
+          "id": "ocli_datadog",
+          "scenarioId": "sc_base",
+          "category": "SaaSSubscription",
+          "name": "Datadog APM Pro",
+          "vendor": "Datadog",
+          "unitCost": { "amount": 31.00, "currency": "USD" },
+          "quantity": 25,
+          "pricingUnit": "PerUserPerMonth",
+          "userCount": 25,
+          "includeInRunRate": true,
+          "notes": "Engineering + ops seats. Renews annually."
+        },
+        {
+          "id": "ocli_github_ent",
+          "scenarioId": "sc_base",
+          "category": "SaaSSubscription",
+          "name": "GitHub Enterprise + Copilot",
+          "vendor": "GitHub",
+          "unitCost": { "amount": 40.00, "currency": "USD" },
+          "quantity": 20,
+          "pricingUnit": "PerUserPerMonth",
+          "userCount": 20,
+          "includeInRunRate": false
+        },
+        {
+          "id": "ocli_travel",
+          "scenarioId": "sc_base",
+          "category": "TravelExpense",
+          "name": "Onshore SME travel",
+          "unitCost": { "amount": 4500.00, "currency": "USD" },
+          "quantity": 8,
+          "pricingUnit": "OneTime",
+          "includeInRunRate": false,
+          "notes": "Discovery + go-live trips. 8 trips at ~$4.5K each."
+        },
+        {
+          "id": "ocli_training",
+          "scenarioId": "sc_base",
+          "category": "Training",
+          "name": "Client team enablement workshops",
+          "unitCost": { "amount": 12000.00, "currency": "USD" },
+          "quantity": 1,
+          "pricingUnit": "OneTime",
+          "phaseId": "ph_hypercare",
+          "includeInRunRate": false
+        },
+        {
+          "id": "ocli_security_audit",
+          "scenarioId": "sc_base",
+          "category": "Subcontractor",
+          "name": "Third-party security & pen test",
+          "vendor": "TBD security firm",
+          "unitCost": { "amount": 45000.00, "currency": "USD" },
+          "quantity": 1,
+          "pricingUnit": "OneTime",
+          "phaseId": "ph_test",
+          "markupPct": 10.0,
+          "includeInRunRate": false
+        }
+      ],
+
+      "assumptions": [
+        {
+          "id": "asm_offshore_ratio",
+          "scenarioId": "sc_base",
+          "topic": "Offshore ratio",
+          "description": "Assuming 45% offshore (India) for Build and Test phases. This requires client comfort with offshore for non-PII workloads. Switch to onshore-only mode adds ~$1.4M.",
+          "source": "assumed",
+          "riskLevel": "medium",
+          "linkedEntities": [
+            { "type": "resource", "id": "res_dev_pro_x4" },
+            { "type": "resource", "id": "res_qa_pro_x2" }
+          ],
+          "createdBy": "user_demo_owner",
+          "createdAt": "2026-05-27T19:30:00Z"
+        },
+        {
+          "id": "asm_cloud_sizing",
+          "scenarioId": "sc_base",
+          "topic": "Cloud sizing pre-Discovery",
+          "description": "EC2 / AKS instance counts based on industry benchmarks for similar-scale e-commerce platforms. Refine after Discovery workload analysis.",
+          "source": "industryBenchmark",
+          "riskLevel": "medium",
+          "linkedEntities": [
+            { "type": "cloud", "id": "cli_aws_ec2_prod" },
+            { "type": "cloud", "id": "cli_azure_aks" }
+          ],
+          "createdBy": "user_demo_owner",
+          "createdAt": "2026-05-27T19:30:00Z"
+        },
+        {
+          "id": "asm_reserved_pricing",
+          "scenarioId": "sc_base",
+          "topic": "1-year reserved pricing on prod compute",
+          "description": "Reserved 1yr commitment for prod EC2 + RDS + AKS. Saves ~30% vs on-demand but requires client purchase commitment at deploy time.",
+          "source": "assumed",
+          "riskLevel": "low",
+          "linkedEntities": [
+            { "type": "cloud", "id": "cli_aws_ec2_prod" },
+            { "type": "cloud", "id": "cli_aws_rds_prod" },
+            { "type": "cloud", "id": "cli_azure_aks" }
+          ],
+          "createdBy": "user_demo_owner",
+          "createdAt": "2026-05-27T19:30:00Z"
+        },
+        {
+          "id": "asm_contingency",
+          "scenarioId": "sc_base",
+          "topic": "8% contingency",
+          "description": "Standard mid-confidence contingency. Bump to 12% if client refuses fixed scope on integration components.",
+          "source": "assumed",
+          "riskLevel": "low",
+          "linkedEntities": [
+            { "type": "project", "id": "proj_vtx_modernization_2026" }
+          ],
+          "createdBy": "user_demo_owner",
+          "createdAt": "2026-05-27T19:30:00Z"
+        }
+      ],
+
+      "overrides": {},
+
+      "createdBy": "user_demo_owner",
+      "createdAt": "2026-05-27T19:30:00Z",
+      "updatedAt": "2026-05-27T19:30:00Z"
+    },
+
+    {
+      "id": "sc_onshore_only",
+      "projectId": "proj_vtx_modernization_2026",
+      "name": "Onshore-Only (Conservative)",
+      "description": "Compliance-driven variant: zero offshore. Higher price, simpler approval. Useful for risk-averse client conversations.",
+      "isBase": false,
+      "parentScenarioId": "sc_base",
+      "order": 2,
+
+      "resources": [],
+      "cloudLineItems": [],
+      "otherCostLineItems": [],
+      "assumptions": [],
+      "overrides": {
+        "contingencyPct": 6.0
+      },
+
+      "createdBy": "user_demo_owner",
+      "createdAt": "2026-05-27T19:30:00Z",
+      "updatedAt": "2026-05-27T19:30:00Z",
+      "_note": "Resources/cloud/etc. left empty in the seed for brevity. Real clone would copy from sc_base and re-geo the offshore resources to onshore."
+    }
+  ]
+}

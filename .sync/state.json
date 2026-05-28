@@ -1,0 +1,27 @@
+{
+    "version":  "1.0",
+    "initialized_at":  "2026-05-27T23:46:27.8692380Z",
+    "target":  "C:\\dev\\cost\\sow-calc",
+    "directories":  [
+                        "docs",
+                        "docs/decisions",
+                        "docs/wireframes",
+                        "src",
+                        "src/engine",
+                        "src/engine/calculations",
+                        "src/data",
+                        "src/types",
+                        "src/ui",
+                        "src/ui/components",
+                        "src/ui/pages",
+                        "seed",
+                        "seed/rate-cards",
+                        "seed/cloud-pricing",
+                        "seed/scenarios",
+                        "scripts",
+                        "tests",
+                        "tests/engine",
+                        "tests/fixtures",
+                        ".sync"
+                    ]
+}

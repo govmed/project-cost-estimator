@@ -1,0 +1,37 @@
+﻿{
+  "_comment": "App-side TypeScript config. The root tsconfig.json (already shipped in #4) handles the engine + tests. This file extends it for the UI build with React JSX and DOM types.",
+
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*":         ["./src/*"],
+      "@/engine":    ["./src/engine"],
+      "@/types":     ["./src/types"],
+      "@/ui/*":      ["./src/ui/*"],
+      "@/data/*":    ["./src/data/*"]
+    }
+  },
+
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist", "scripts/generate_rate_card.py"]
+}

@@ -1,0 +1,87 @@
+﻿import type { Config } from 'tailwindcss';
+
+/**
+ * Tailwind config encoding the design tokens from Deliverable #5
+ * (docs/05-wireframes.md):
+ *
+ *  - Tabular numerals everywhere we show money (the `font-tabular` class)
+ *  - Monospace digits for IDs and code (`font-mono`)
+ *  - Status colors mapped to semantic names (status-good, status-warn,
+ *    status-bad) backed by CSS variables so dark mode can re-theme without
+ *    touching component code
+ *  - One brand accent for primary buttons and links
+ *  - Generous spacing scale (defaults are fine)
+ */
+const config: Config = {
+  darkMode: ['class'],
+
+  content: [
+    './index.html',
+    './src/**/*.{ts,tsx}',
+  ],
+
+  theme: {
+    extend: {
+      colors: {
+        // Backed by CSS variables defined in src/ui/styles/tokens.css.
+        // Dark mode swaps the variable values; class names stay identical.
+        background:    'rgb(var(--color-background) / <alpha-value>)',
+        foreground:    'rgb(var(--color-foreground) / <alpha-value>)',
+        muted:         'rgb(var(--color-muted) / <alpha-value>)',
+        'muted-fg':    'rgb(var(--color-muted-fg) / <alpha-value>)',
+        border:        'rgb(var(--color-border) / <alpha-value>)',
+        input:         'rgb(var(--color-input) / <alpha-value>)',
+        ring:          'rgb(var(--color-ring) / <alpha-value>)',
+
+        // Brand accent
+        accent:        'rgb(var(--color-accent) / <alpha-value>)',
+        'accent-fg':   'rgb(var(--color-accent-fg) / <alpha-value>)',
+
+        // Status (green / amber / red per wireframes)
+        'status-good': 'rgb(var(--color-status-good) / <alpha-value>)',
+        'status-warn': 'rgb(var(--color-status-warn) / <alpha-value>)',
+        'status-bad':  'rgb(var(--color-status-bad) / <alpha-value>)',
+      },
+
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['SF Mono', 'Menlo', 'Consolas', 'Liberation Mono', 'monospace'],
+      },
+
+      fontVariantNumeric: {
+        // Use via the `tabular-nums` utility class.
+        // Tailwind v3 includes this by default; just a reminder.
+      },
+
+      // Generous default spacing scale, but a tighter density variant
+      // for the planners' dense tables.
+      spacing: {
+        '4.5': '1.125rem',  // 18px - between Tailwind's 4 (16) and 5 (20)
+        '13':  '3.25rem',   // 52px - chrome row heights
+      },
+
+      // KPI cards in the wireframes are deliberately large.
+      fontSize: {
+        'kpi':   ['2.25rem', { lineHeight: '2.5rem', fontWeight: '600' }],
+        'kpi-sm':['1.5rem',  { lineHeight: '1.75rem', fontWeight: '600' }],
+      },
+
+      // Right-rail panel slides in at a specific width.
+      width: {
+        'rail-right': '24rem',  // 384px
+        'rail-left':  '14rem',  // 224px (collapses to 3.5rem icon-only)
+      },
+
+      transitionDuration: {
+        'fast':   '120ms',  // for inline-edit blur/focus
+      },
+    },
+  },
+
+  plugins: [
+    // require('@tailwindcss/forms'),       // uncomment when forms are styled
+    // require('@tailwindcss/typography'),  // uncomment if rendering markdown
+  ],
+};
+
+export default config;

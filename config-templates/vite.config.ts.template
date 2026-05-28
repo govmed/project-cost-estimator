@@ -1,0 +1,58 @@
+﻿/// <reference types="vitest" />
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'node:path';
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+
+  resolve: {
+    alias: {
+      '@':         path.resolve(__dirname, './src'),
+      '@/engine':  path.resolve(__dirname, './src/engine'),
+      '@/types':   path.resolve(__dirname, './src/types'),
+      '@/ui':      path.resolve(__dirname, './src/ui'),
+      '@/data':    path.resolve(__dirname, './src/data'),
+    },
+  },
+
+  // Bundle the calc engine and types as part of the main chunk. They're
+  // small and frequently used; splitting adds latency for no benefit.
+  build: {
+    target: 'es2020',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Heavy libraries go in their own chunks for better caching.
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'charts':       ['recharts'],
+          'tanstack':     ['@tanstack/react-table', '@tanstack/react-virtual', '@tanstack/react-query'],
+        },
+      },
+    },
+  },
+
+  server: {
+    port: 5173,
+    strictPort: false,
+    open: false,
+  },
+
+  test: {
+    globals: false,
+    environment: 'jsdom',
+    setupFiles: ['./tests/setup.ts'],
+    include: ['tests/**/*.test.{ts,tsx}'],
+    coverage: {
+      reporter: ['text', 'html', 'lcov'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+      ],
+    },
+  },
+});
