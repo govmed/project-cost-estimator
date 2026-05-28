@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Cloud line item calculations.
  *
  * Each line item has:

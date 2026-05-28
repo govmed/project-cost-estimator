@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Branded ID types.
  *
  * At runtime these are just strings. At compile time, TypeScript treats them

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * OtherCostLineItem — anything that's not labor or cloud.
  *
  * Kept deliberately flat. The category drives reporting roll-ups but doesn't

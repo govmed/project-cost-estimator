@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CloudLineItem — a single cloud infrastructure cost component.
  *
  * One row = one service in one environment at one pricing model. Multi-env

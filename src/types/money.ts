@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Money — currency-aware monetary value.
  *
  * Every monetary field in the data model is a Money, never a raw number.

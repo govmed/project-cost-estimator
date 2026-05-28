@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { toBase, sumInBase, addInBase } from '../../src/engine/fx';
 import { money } from '../../src/types/money';
 

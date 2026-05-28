@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Time math.
  *
  * The model uses WEEKS as the natural unit (phases are in durationWeeks).

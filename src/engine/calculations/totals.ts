@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Scenario totals roll-up.
  *
  * Math (gross-margin / margin-on-price convention):

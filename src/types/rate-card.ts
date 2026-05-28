@@ -1,4 +1,4 @@
-﻿/**
+/**
  * RateCard — a versioned table of bill rates and internal costs.
  *
  * Rate cards are external to any specific project — they're the

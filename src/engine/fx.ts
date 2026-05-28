@@ -1,4 +1,4 @@
-﻿/**
+/**
  * FX conversion.
  *
  * Every monetary value in the model carries its currency. Before any summing

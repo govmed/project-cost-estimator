@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Burn curve and headcount curve assembly.
  *
  * Resources distribute their cost across the phases they're allocated to.

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Engine entry point.
  *
  *   calculate(project, scenario) -> ScenarioTotals

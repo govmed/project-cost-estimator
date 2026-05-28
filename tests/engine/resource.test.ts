@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { calculateResource, hoursInPhase, allocationForPhase } from '../../src/engine/calculations/resource';
 import { money } from '../../src/types/money';
 import type { Resource } from '../../src/types/resource';

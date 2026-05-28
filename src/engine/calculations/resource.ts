@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Resource calculations.
  *
  * For each resource, compute hours and money per phase, then aggregate.

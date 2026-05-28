@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { rampFactor } from '../../src/engine/calculations/cloud';
 
 describe('rampFactor', () => {

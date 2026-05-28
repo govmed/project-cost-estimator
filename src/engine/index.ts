@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Engine barrel export.
  * Public API: import { calculate, ScenarioTotals } from '@/engine';
  */

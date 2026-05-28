@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Assumption — a defensibility item attached to a scenario.
  *
  * Every "EDIT BEFORE USE" default the user accepts becomes an assumption.

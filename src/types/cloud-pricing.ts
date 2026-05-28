@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CloudPricingCatalog - the seed-data shape for AWS / Azure / etc. pricing
  * tables shipped in `seed/cloud-pricing/`.
  *

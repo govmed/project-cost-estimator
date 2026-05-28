@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Engine output types.
  *
  * The engine is pure: given a Scenario (+ Project context), it returns a

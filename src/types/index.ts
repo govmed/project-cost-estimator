@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Type barrel - lets consumers do:
  *   import { Project, Scenario, Resource, Money } from '@/types';
  *

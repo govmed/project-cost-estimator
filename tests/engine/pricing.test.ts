@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { applyPricing } from '../../src/engine/calculations/totals';
 import { money } from '../../src/types/money';
 

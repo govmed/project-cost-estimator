@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Other cost line item calculations.
  *
  * Each line is sized by pricingUnit:

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Integration test: run calculate() against the seed scenario from #3.
  *
  * The seed scenario is the regression test for the data model AND the

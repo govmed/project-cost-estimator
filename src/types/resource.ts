@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Resource — a person or fractional headcount allocated to the project.
  *
  * A Resource is always scoped to a Scenario (not to the Project directly).

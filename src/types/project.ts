@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Project — top-level container. Holds metadata and the list of scenarios.
  *
  * KEY DESIGN CHOICE: a Project owns NO cost data directly. All resources,

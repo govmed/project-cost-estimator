@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Scenario — a named variant of the project's cost model.
  *
  * Scenarios own all the cost data: resources, cloud line items, other costs,
