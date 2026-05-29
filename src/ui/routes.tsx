@@ -18,6 +18,7 @@ import { CloudPlannerPage } from '@/ui/pages/CloudPlannerPage';
 import { OtherCostsPlannerPage } from '@/ui/pages/OtherCostsPlannerPage';
 import { ProjectSetupPage } from '@/ui/pages/ProjectSetupPage';
 import { ScenariosPage } from '@/ui/pages/ScenariosPage';
+import { MAModePage } from '@/ui/pages/MAModePage';
 import { PageStub } from '@/ui/pages/PageStub';
 
 // Lazy-load the Dashboard so Recharts ships in its own chunk and isn't
@@ -52,16 +53,7 @@ export function AppRoutes() {
         <Route path="setup" element={<ProjectSetupPage />} />
         <Route path="cloud" element={<CloudPlannerPage />} />
         <Route path="other-costs" element={<OtherCostsPlannerPage />} />
-        <Route
-          path="ma-mode"
-          element={
-            <PageStub
-              title="M&A Mode"
-              purpose="TSA, carve-out, and integration overlays."
-              milestone="M4 (UI) / Phase 2 (math)"
-            />
-          }
-        />
+        <Route path="ma-mode" element={<MAModePage />} />
         <Route path="scenarios" element={<ScenariosPage />} />
         <Route
           path="assumptions"

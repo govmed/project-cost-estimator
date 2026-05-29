@@ -54,7 +54,10 @@ export type AuditAction =
   | { kind: 'scenario.clone'; fromScenarioId: ScenarioId; toScenarioId: ScenarioId; name: string }
   | { kind: 'scenario.delete'; scenarioId: ScenarioId; name: string }
   | { kind: 'scenario.rename'; scenarioId: ScenarioId; oldName: string; newName: string }
-  | { kind: 'scenario.setBase'; oldBaseScenarioId: ScenarioId; newBaseScenarioId: ScenarioId };
+  | { kind: 'scenario.setBase'; oldBaseScenarioId: ScenarioId; newBaseScenarioId: ScenarioId }
+  // M&A overlay (M4d)
+  | { kind: 'scenario.maData.set'; scenarioId: ScenarioId; mode: 'TSA' | 'CarveOut' | 'Integration'; data: unknown }
+  | { kind: 'scenario.maData.clear'; scenarioId: ScenarioId; oldData: unknown };
 
 export interface AuditEntry {
   id: string;

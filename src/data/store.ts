@@ -15,7 +15,7 @@
 
 import { create } from 'zustand';
 import type { Project, Phase, ProjectStatus, EngagementType, EngagementContext } from '@/types/project';
-import type { Scenario } from '@/types/scenario';
+import type { Scenario, MAModeData } from '@/types/scenario';
 import type { Resource } from '@/types/resource';
 import type {
   CloudLineItem,
@@ -213,6 +213,10 @@ interface ProjectState {
   deleteScenario(scenarioId: ScenarioId): void;
   renameScenario(scenarioId: ScenarioId, newName: string): void;
   setBaseScenario(scenarioId: ScenarioId): void;
+
+  // M&A overlay (M4d). Replaces the scenario's maData wholesale.
+  // Pass null to clear.
+  updateMAData(scenarioId: ScenarioId, maData: MAModeData | null): void;
 }
 
 function clampAllocation(v: number): number {
@@ -1415,6 +1419,49 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       oldBaseScenarioId: oldBaseId,
       newBaseScenarioId: scenarioId,
     });
+  },
+
+  // -----------------------------------------------------------------
+  // M&A overlay (M4d)
+  // -----------------------------------------------------------------
+
+  updateMAData(scenarioId, maData) {
+    const state = get();
+    if (!state.project) return;
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+
+    const oldData = scenario.maData;
+    // No-op if no change. Shallow equality check on JSON is good enough for these
+    // small POJOs and avoids spurious updates / audit entries.
+    if (JSON.stringify(oldData) === JSON.stringify(maData)) return;
+
+    const updated: Scenario = {
+      ...scenario,
+      maData: maData ?? undefined,
+      updatedAt: nowIso(),
+    };
+    const nextScenarios = state.scenarios.map((s) =>
+      s.id === scenarioId ? updated : s,
+    );
+    const nextProject = bumpProject(state.project);
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+
+    if (maData) {
+      appendAudit(nextProject.id, scenarioId, {
+        kind: 'scenario.maData.set',
+        scenarioId,
+        mode: maData.mode,
+        data: maData,
+      });
+    } else {
+      appendAudit(nextProject.id, scenarioId, {
+        kind: 'scenario.maData.clear',
+        scenarioId,
+        oldData,
+      });
+    }
   },
 }));
 

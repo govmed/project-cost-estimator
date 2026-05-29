@@ -36,6 +36,7 @@ import {
   rollUpByCloudCategory,
 } from './calculations/totals';
 import { ScenarioTotals } from './types';
+import { calculateMAOverlay } from './ma-overlay';
 
 export function calculate(project: Project, scenario: Scenario): ScenarioTotals {
   // FX context derived from project.
@@ -173,5 +174,11 @@ export function calculate(project: Project, scenario: Scenario): ScenarioTotals 
     byGeography,
     byCloudProvider,
     byCloudCategory,
+
+    // M4d: optional M&A overlay (preview math; doesn't affect finalPrice)
+    maOverlay: calculateMAOverlay(project, scenario, {
+      baseRunRateMonthly: runRateMonthly.amount,
+      baseInBuildResourceCost: resourcesSubtotal.amount,
+    }) ?? undefined,
   };
 }

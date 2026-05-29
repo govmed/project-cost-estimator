@@ -116,6 +116,14 @@ export interface ScenarioTotals {
   byGeography: Record<string, Money>;
   byCloudProvider: Record<string, Money>;
   byCloudCategory: Record<string, Money>;
+
+  /**
+   * M&A overlay impact (M4d). Optional; present only when the scenario has
+   * maData configured. Does NOT roll into totalCost / finalPrice - the
+   * overlay is a separate preview projection so the headline price stays
+   * stable until the dealmaker explicitly wants to commit.
+   */
+  maOverlay?: import('./ma-overlay').MAOverlayTotals;
 }
 
 export interface PhaseTotals {
