@@ -16,7 +16,7 @@
  * empty-state CTA.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useProjectStore, selectActiveScenario } from '@/data/store';
 import type {
   Assumption,
@@ -26,6 +26,7 @@ import type {
 import { AssumptionSourceBadge } from '@/ui/components/assumptions/AssumptionSourceBadge';
 import { AssumptionRiskBadge } from '@/ui/components/assumptions/AssumptionRiskBadge';
 import { AddAssumptionModal } from '@/ui/components/assumptions/AddAssumptionModal';
+import { AssumptionLinksCell } from '@/ui/components/assumptions/AssumptionLinksCell';
 
 const SOURCES: readonly AssumptionSource[] = [
   'assumed',
@@ -237,6 +238,16 @@ function AssumptionRow({ assumption, scenarioId }: AssumptionRowProps) {
   const [draftTopic, setDraftTopic] = useState(assumption.topic);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  // M5d-3: when confirmDelete flips on, auto-reset it after 3s. Wrapped in
+  // useEffect with cleanup so the timer is cancelled if the component
+  // unmounts (otherwise the setTimeout fires into a torn-down React tree
+  // in tests and emits "ReferenceError: window is not defined").
+  useEffect(() => {
+    if (!confirmDelete) return;
+    const t = setTimeout(() => setConfirmDelete(false), 3000);
+    return () => clearTimeout(t);
+  }, [confirmDelete]);
+
   function commitTopic() {
     if (draftTopic.trim() && draftTopic !== assumption.topic) {
       updateAssumption(scenarioId, assumption.id, {
@@ -341,8 +352,8 @@ function AssumptionRow({ assumption, scenarioId }: AssumptionRowProps) {
           <AssumptionRiskBadge risk={assumption.riskLevel} />
         </div>
       </td>
-      <td className="px-3 py-2 text-right align-top font-mono text-xs tabular-nums text-muted-fg">
-        {assumption.linkedEntities.length}
+      <td className="px-3 py-2 text-right align-top">
+        <AssumptionLinksCell entities={assumption.linkedEntities} />
       </td>
       <td className="px-3 py-2 align-top text-xs">
         {reviewLabel ? (
@@ -374,7 +385,9 @@ function AssumptionRow({ assumption, scenarioId }: AssumptionRowProps) {
                 setConfirmDelete(false);
               } else {
                 setConfirmDelete(true);
-                setTimeout(() => setConfirmDelete(false), 3000);
+                // The 3s auto-reset is scheduled by the useEffect below,
+                // not inline here - so it gets cleaned up if the component
+                // unmounts (which happens fast in tests and leaks otherwise).
               }
             }}
             className={

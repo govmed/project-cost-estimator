@@ -16,10 +16,9 @@
 import { useMemo, useState } from 'react';
 import { useProjectStore, selectActiveScenario } from '@/data/store';
 import { useScenarioTotals } from '@/hooks/useScenarioTotals';
-import { useKpiProvenance } from '@/ui/hooks/useKpiProvenance';
+import { useDefensibilityStore } from '@/data/defensibility-store';
 import type { Geography, SkillLevel } from '@/types/resource';
 import type { ResourceId } from '@/types/ids';
-import type { KpiKind } from '@/data/kpi-provenance-types';
 import { buildResourceRows } from '@/ui/components/planner/build-rows';
 import { ResourceTable } from '@/ui/components/planner/ResourceTable';
 import { GeographyMixBar } from '@/ui/components/planner/GeographyMixBar';
@@ -27,7 +26,6 @@ import { PlannerFilters } from '@/ui/components/planner/PlannerFilters';
 import { AddResourceModal } from '@/ui/components/planner/AddResourceModal';
 import { GuardrailsStrip } from '@/ui/components/planner/GuardrailsStrip';
 import { evaluateGuardrails } from '@/engine/guardrails/resource-guardrails';
-import { DefensibilityDrawer } from '@/ui/components/defensibility/DefensibilityDrawer';
 
 export function ResourcePlannerPage() {
   const project = useProjectStore((s) => s.project);
@@ -40,9 +38,8 @@ export function ResourcePlannerPage() {
   const [selectedGeos, setSelectedGeos] = useState<Set<Geography>>(new Set());
   const [selectedLevels, setSelectedLevels] = useState<Set<SkillLevel>>(new Set());
   const [addOpen, setAddOpen] = useState(false);
-  // M5d-1: defensibility drawer state
-  const [openKpi, setOpenKpi] = useState<KpiKind | null>(null);
-  const provenance = useKpiProvenance(openKpi);
+  // M5d-2: route clicks to the global defensibility store
+  const openDefensibility = useDefensibilityStore((s) => s.open);
 
   const activeScenario = useMemo(
     () => selectActiveScenario({ scenarios, activeScenarioId }),
@@ -175,7 +172,7 @@ export function ResourcePlannerPage() {
         totalsFooter={totalsFooter}
         unfilteredCount={allRows.length}
         onOpenDefensibility={(resourceId: ResourceId) =>
-          setOpenKpi({ kind: 'resourceBilled', resourceId })
+          openDefensibility({ kind: 'resourceBilled', resourceId })
         }
       />
 
@@ -200,11 +197,6 @@ export function ResourcePlannerPage() {
         isOpen={addOpen}
         onClose={() => setAddOpen(false)}
         onAdd={(input) => addResource(activeScenario.id, input)}
-      />
-
-      <DefensibilityDrawer
-        provenance={provenance}
-        onClose={() => setOpenKpi(null)}
       />
     </div>
   );

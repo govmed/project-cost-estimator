@@ -62,7 +62,9 @@ export type AuditAction =
   | { kind: 'assumption.add'; assumptionId: string; assumption: unknown }
   | { kind: 'assumption.update'; assumptionId: string; field: string; oldValue: unknown; newValue: unknown }
   | { kind: 'assumption.delete'; assumptionId: string; assumption: unknown }
-  | { kind: 'assumption.review'; assumptionId: string; reviewedAt: string };
+  | { kind: 'assumption.review'; assumptionId: string; reviewedAt: string }
+  // Project lifecycle (M5d-3)
+  | { kind: 'project.create'; name: string; client: string; engagementType: string; engagementContext: string };
 
 export interface AuditEntry {
   id: string;

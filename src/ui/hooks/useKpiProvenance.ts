@@ -1,17 +1,25 @@
 /**
- * useKpiProvenance hook (M5d-1).
+ * useKpiProvenance hook (M5d-1, extended M5d-2).
  *
- * Given a KpiKind, returns the full KpiProvenance for the active scenario.
+ * Given a KpiKind, returns the full KpiProvenance for the targeted
+ * scenario. The scenario is:
+ *   - kind.scenarioId if provided (Compare grid passes this to target a
+ *     non-active scenario)
+ *   - otherwise the active scenario (Dashboard, top-rail, Resource Planner
+ *     paths all use this)
+ *
  * Returns null when:
  *   - no project is loaded
- *   - the kind requires a resourceId that doesn't exist
+ *   - the targeted scenario doesn't exist
+ *   - the kind requires a resourceId that doesn't exist in that scenario
  *
  * Pure projection of project state + totals. No I/O.
  */
 
 import { useMemo } from 'react';
-import { useProjectStore, selectActiveScenario } from '@/data/store';
+import { useProjectStore } from '@/data/store';
 import { useScenarioTotals } from '@/hooks/useScenarioTotals';
+import { calculate } from '@/engine/calculate';
 import { formatMoney } from '@/ui/format';
 import type {
   KpiKind,
@@ -24,26 +32,38 @@ export function useKpiProvenance(kind: KpiKind | null): KpiProvenance | null {
   const project = useProjectStore((s) => s.project);
   const scenarios = useProjectStore((s) => s.scenarios);
   const activeScenarioId = useProjectStore((s) => s.activeScenarioId);
-  const totals = useScenarioTotals();
+  const activeTotals = useScenarioTotals();
 
   return useMemo(() => {
-    if (!kind || !project || !totals) return null;
-    const activeScenario = selectActiveScenario({ scenarios, activeScenarioId });
-    if (!activeScenario) return null;
+    if (!kind || !project) return null;
+
+    // Resolve which scenario this provenance targets.
+    const targetScenarioId = kind.scenarioId ?? activeScenarioId;
+    const targetScenario = scenarios.find((s) => s.id === targetScenarioId);
+    if (!targetScenario) return null;
+
+    // Use cached active totals when targeting the active scenario; otherwise
+    // compute on the fly. Compare-grid scenarios may not be the active one,
+    // so this is the common path for those surfaces.
+    const totals =
+      targetScenario.id === activeScenarioId
+        ? activeTotals
+        : calculate(project, targetScenario);
+    if (!totals) return null;
 
     switch (kind.kind) {
       case 'finalPrice':
-        return buildFinalPriceProvenance(project, activeScenario, totals);
+        return buildFinalPriceProvenance(project, targetScenario, totals);
       case 'totalCost':
-        return buildTotalCostProvenance(project, activeScenario, totals);
+        return buildTotalCostProvenance(project, targetScenario, totals);
       case 'realizedMargin':
-        return buildMarginProvenance(project, activeScenario, totals);
+        return buildMarginProvenance(project, targetScenario, totals);
       case 'blendedRate':
-        return buildBlendedRateProvenance(project, activeScenario, totals);
+        return buildBlendedRateProvenance(project, targetScenario, totals);
       case 'resourceBilled':
         return buildResourceBilledProvenance(
           project,
-          activeScenario,
+          targetScenario,
           totals,
           kind.resourceId,
         );
@@ -53,7 +73,7 @@ export function useKpiProvenance(kind: KpiKind | null): KpiProvenance | null {
         return null;
       }
     }
-  }, [kind, project, scenarios, activeScenarioId, totals]);
+  }, [kind, project, scenarios, activeScenarioId, activeTotals]);
 }
 
 // -----------------------------------------------------------------

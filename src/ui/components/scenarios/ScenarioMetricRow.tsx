@@ -9,6 +9,9 @@
  *  - direction='neutral' (hours): muted color
  *  - No delta when baseline is null/undefined or numeric is undefined
  *  - Zero deltas (<0.001) are suppressed entirely
+ *
+ * M5d-2: if `onValueClick` is supplied, the value becomes a button that
+ * opens the defensibility drawer scoped to the row's scenario.
  */
 
 import clsx from 'clsx';
@@ -28,6 +31,8 @@ export interface ScenarioMetricRowProps {
   direction?: MetricDirection;
   /** Hint shown beneath the value. */
   hint?: string;
+  /** M5d-2: if provided, clicking the value fires this handler. */
+  onValueClick?: () => void;
 }
 
 export function ScenarioMetricRow({
@@ -38,6 +43,7 @@ export function ScenarioMetricRow({
   formatDelta,
   direction = 'neutral',
   hint,
+  onValueClick,
 }: ScenarioMetricRowProps) {
   const hasDelta =
     typeof numeric === 'number' &&
@@ -76,7 +82,18 @@ export function ScenarioMetricRow({
         {label}
       </div>
       <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <span className="font-mono text-sm tabular-money text-foreground">{value}</span>
+        {onValueClick ? (
+          <button
+            type="button"
+            onClick={onValueClick}
+            aria-label={`Show defensibility for ${label}`}
+            className="font-mono text-sm tabular-money text-foreground rounded -mx-0.5 px-0.5 hover:bg-muted/50 hover:underline focus:outline-none focus:ring-1 focus:ring-accent"
+          >
+            {value}
+          </button>
+        ) : (
+          <span className="font-mono text-sm tabular-money text-foreground">{value}</span>
+        )}
         {showDelta && (
           <span className={clsx('font-mono text-xs tabular-nums', deltaClass)}>
             {delta > 0 ? '+' : ''}

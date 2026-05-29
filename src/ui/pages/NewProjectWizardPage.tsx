@@ -20,6 +20,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProjectStore } from '@/data/store';
+import { appendAudit } from '@/data/audit-log';
 import {
   createProjectFromWizard,
   DEFAULT_PHASES,
@@ -107,6 +108,16 @@ export function NewProjectWizardPage() {
     if (!canCreate) return;
     const { project, scenarios } = createProjectFromWizard(input);
     setProject(project, scenarios);
+    // M5d-3: write a project.create audit entry against the new project's
+    // base scenario. Gives the project a non-empty history from the moment
+    // it's created (instead of "first edit shows up out of nowhere").
+    appendAudit(project.id, scenarios[0].id, {
+      kind: 'project.create',
+      name: project.name,
+      client: project.client,
+      engagementType: project.engagementType,
+      engagementContext: project.engagementContext,
+    });
     navigate(`/p/${project.id}/setup`);
   }
 

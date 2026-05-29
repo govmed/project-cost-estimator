@@ -238,6 +238,13 @@ export function labelForAuditAction(action: AuditAction): AuditLabel {
         category: 'assumption',
       };
 
+    case 'project.create':
+      return {
+        headline: 'Project created',
+        summary: `${action.name} for ${action.client} (${action.engagementContext}, ${action.engagementType})`,
+        category: 'project',
+      };
+
     default: {
       // Exhaustiveness check: if a new action.kind is added this will fail to compile
       const _exhaustive: never = action;

@@ -1701,7 +1701,56 @@
           "description": "Conservative case: all engineering and QA resources US-based. No offshore/nearshore leverage. Higher cost, lower risk for compliance-sensitive workstreams.",
           "source": "assumed",
           "riskLevel": "low",
-          "linkedEntities": [],
+          "linkedEntities": [
+            {
+              "type": "resource",
+              "id": "res_eng_lead_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_pm_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_sol_arch_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_cloud_arch_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_ba_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_tech_lead_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_dev_senior_x2_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_dev_pro_x4_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_devops_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_qa_lead_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_qa_pro_x2_onshore"
+            },
+            {
+              "type": "resource",
+              "id": "res_ocm_onshore"
+            }
+          ],
           "createdBy": "usr_tmorales",
           "createdAt": "2026-01-15T12:00:00.000Z"
         }

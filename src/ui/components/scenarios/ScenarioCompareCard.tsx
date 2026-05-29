@@ -21,6 +21,7 @@ import type { Scenario } from '@/types/scenario';
 import type { ScenarioTotals } from '@/engine/types';
 import { formatMoney, formatPercent } from '@/ui/format';
 import { useProjectStore } from '@/data/store';
+import { useDefensibilityStore } from '@/data/defensibility-store';
 import { ScenarioMetricRow } from './ScenarioMetricRow';
 
 export interface ScenarioCompareCardProps {
@@ -43,6 +44,7 @@ export function ScenarioCompareCard({
 }: ScenarioCompareCardProps) {
   const navigate = useNavigate();
   const setActiveScenario = useProjectStore((s) => s.setActiveScenario);
+  const openDefensibility = useDefensibilityStore((s) => s.open);
 
   function jumpToDashboard() {
     setActiveScenario(scenario.id);
@@ -101,6 +103,9 @@ export function ScenarioCompareCard({
             baseline={baseForDelta?.finalPrice.amount}
             formatDelta={(d) => formatMoney(d, totals.finalPrice.currency)}
             direction="goodIfDown"
+            onValueClick={() =>
+              openDefensibility({ kind: 'finalPrice', scenarioId: scenario.id })
+            }
           />
           <ScenarioMetricRow
             label="Total Cost"
@@ -109,6 +114,9 @@ export function ScenarioCompareCard({
             baseline={baseForDelta?.totalCost.amount}
             formatDelta={(d) => formatMoney(d, totals.totalCost.currency)}
             direction="goodIfDown"
+            onValueClick={() =>
+              openDefensibility({ kind: 'totalCost', scenarioId: scenario.id })
+            }
           />
           <ScenarioMetricRow
             label="Realized Margin"
@@ -117,6 +125,9 @@ export function ScenarioCompareCard({
             baseline={baseForDelta?.realizedMarginPct}
             formatDelta={(d) => `${d.toFixed(1)} pts`}
             direction="goodIfUp"
+            onValueClick={() =>
+              openDefensibility({ kind: 'realizedMargin', scenarioId: scenario.id })
+            }
           />
           <ScenarioMetricRow
             label="Resources Subtotal"

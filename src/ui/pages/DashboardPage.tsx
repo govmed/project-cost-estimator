@@ -18,7 +18,7 @@
 
 import { useProjectStore } from '@/data/store';
 import { useScenarioTotals } from '@/hooks/useScenarioTotals';
-import { useKpiProvenance } from '@/ui/hooks/useKpiProvenance';
+import { useDefensibilityStore } from '@/data/defensibility-store';
 import { formatMoney, formatPercent } from '@/ui/format';
 import { MonthlyBurnChart } from '@/ui/components/dashboard/MonthlyBurnChart';
 import { HeadcountChart } from '@/ui/components/dashboard/HeadcountChart';
@@ -27,17 +27,11 @@ import {
   BreakdownBars,
   entriesFromBreakdown,
 } from '@/ui/components/dashboard/BreakdownBars';
-import { DefensibilityDrawer } from '@/ui/components/defensibility/DefensibilityDrawer';
-import type { KpiKind } from '@/data/kpi-provenance-types';
-import { useState } from 'react';
 
 export function DashboardPage() {
   const project = useProjectStore((s) => s.project);
   const totals = useScenarioTotals();
-
-  // M5d-1: tracking which KPI's defensibility drawer is open (if any)
-  const [openKpi, setOpenKpi] = useState<KpiKind | null>(null);
-  const provenance = useKpiProvenance(openKpi);
+  const openDefensibility = useDefensibilityStore((s) => s.open);
 
   if (!project || !totals) {
     return <div className="px-8 py-12 text-muted-fg">No active scenario.</div>;
@@ -56,7 +50,7 @@ export function DashboardPage() {
         </p>
       </div>
 
-      {/* KPI tiles */}
+      {/* KPI tiles - all four now open the defensibility drawer */}
       <section>
         <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-fg">
           Headline KPIs
@@ -65,14 +59,23 @@ export function DashboardPage() {
           <BigKpi
             label="Final Price"
             value={formatMoney(totals.finalPrice)}
-            onClick={() => setOpenKpi({ kind: 'finalPrice' })}
+            onClick={() => openDefensibility({ kind: 'finalPrice' })}
           />
-          <BigKpi label="Total Cost" value={formatMoney(totals.totalCost)} />
-          <BigKpi label="Realized Margin" value={formatPercent(totals.realizedMarginPct)} />
+          <BigKpi
+            label="Total Cost"
+            value={formatMoney(totals.totalCost)}
+            onClick={() => openDefensibility({ kind: 'totalCost' })}
+          />
+          <BigKpi
+            label="Realized Margin"
+            value={formatPercent(totals.realizedMarginPct)}
+            onClick={() => openDefensibility({ kind: 'realizedMargin' })}
+          />
           <BigKpi
             label="Blended Rate"
             value={`${formatMoney(totals.effectiveBlendedRate)}/hr`}
             sub={`${Math.round(totals.totalBillableHours).toLocaleString()} hours`}
+            onClick={() => openDefensibility({ kind: 'blendedRate' })}
           />
         </div>
       </section>
@@ -138,11 +141,6 @@ export function DashboardPage() {
         Charts powered by <span className="font-mono">recharts ^3.8.1</span>.
         Engine recomputes on every change to project, scenario, or any line item.
       </p>
-
-      <DefensibilityDrawer
-        provenance={provenance}
-        onClose={() => setOpenKpi(null)}
-      />
     </div>
   );
 }

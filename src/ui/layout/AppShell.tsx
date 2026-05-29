@@ -10,12 +10,15 @@
  *   |        |                              |
  *   +--------+------------------------------+
  *
- * The right rail (defensibility panel) comes in M1c.
+ * The global defensibility drawer (M5d-2) overlays from the right edge
+ * when any KPI is opened. It's mounted once here so every page surface
+ * can open it via useDefensibilityStore().open(kind).
  */
 
 import { Outlet } from 'react-router-dom';
 import { TopRail } from './TopRail';
 import { LeftRail } from './LeftRail';
+import { GlobalDefensibilityDrawer } from '@/ui/components/defensibility/GlobalDefensibilityDrawer';
 
 export function AppShell() {
   return (
@@ -27,6 +30,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <GlobalDefensibilityDrawer />
     </div>
   );
 }

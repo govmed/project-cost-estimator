@@ -1,5 +1,5 @@
 /**
- * KPI provenance types (M5d-1).
+ * KPI provenance types (M5d-1, extended M5d-2 with optional scenarioId).
  *
  * Describes what's behind a single computed number on screen. The
  * right-rail Defensibility panel renders this shape; the renderer is
@@ -13,17 +13,20 @@
 
 import type { Money } from '@/types/money';
 import type { Assumption } from '@/types/assumption';
+import type { ScenarioId } from '@/types/ids';
 
 /**
  * Identifies which KPI we're explaining. Tagged so we can dispatch on it
- * exhaustively. M5d-1 ships only the first few; M5d-2 adds the rest.
+ * exhaustively. `scenarioId` is optional - when missing, the hook uses
+ * the active scenario. Compare-grid surfaces pass scenarioId to target a
+ * specific (possibly non-active) scenario.
  */
 export type KpiKind =
-  | { kind: 'finalPrice' }
-  | { kind: 'totalCost' }
-  | { kind: 'realizedMargin' }
-  | { kind: 'blendedRate' }
-  | { kind: 'resourceBilled'; resourceId: string };
+  | { kind: 'finalPrice'; scenarioId?: ScenarioId }
+  | { kind: 'totalCost'; scenarioId?: ScenarioId }
+  | { kind: 'realizedMargin'; scenarioId?: ScenarioId }
+  | { kind: 'blendedRate'; scenarioId?: ScenarioId }
+  | { kind: 'resourceBilled'; resourceId: string; scenarioId?: ScenarioId };
 
 /**
  * One row in the math section. Rendered as a small two-column table.
