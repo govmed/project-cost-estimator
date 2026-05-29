@@ -42,6 +42,8 @@ import { ResourceId as makeResourceId } from '@/types/ids';
 import { CloudLineItemId as makeCloudLineItemId } from '@/types/ids';
 import { OtherCostLineItemId as makeOtherCostLineItemId } from '@/types/ids';
 import { PhaseId as makePhaseId } from '@/types/ids';
+import { ScenarioId as makeScenarioId } from '@/types/ids';
+import { AssumptionId as makeAssumptionId } from '@/types/ids';
 import { LocalStorageProvider } from './local-storage-provider';
 import type { Storage } from './storage';
 import { appendAudit } from './audit-log';
@@ -205,6 +207,12 @@ interface ProjectState {
   addPhase(input: NewPhaseInput): PhaseId;
   deletePhase(phaseId: PhaseId): void;
   updatePhase(phaseId: PhaseId, field: PhaseField): void;
+
+  // Scenario lifecycle (M4a)
+  cloneScenario(fromScenarioId: ScenarioId, newName?: string): ScenarioId | null;
+  deleteScenario(scenarioId: ScenarioId): void;
+  renameScenario(scenarioId: ScenarioId, newName: string): void;
+  setBaseScenario(scenarioId: ScenarioId): void;
 }
 
 function clampAllocation(v: number): number {
@@ -292,6 +300,22 @@ function genPhaseId(): PhaseId {
       ? crypto.randomUUID().slice(0, 8)
       : Math.random().toString(36).slice(2, 10);
   return makePhaseId(`phase_${Date.now()}_${random}`);
+}
+
+function genScenarioId(): ScenarioId {
+  const random =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+  return makeScenarioId(`scn_${Date.now()}_${random}`);
+}
+
+function genAssumptionId(): import('@/types/ids').AssumptionId {
+  const random =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+  return makeAssumptionId(`asm_${Date.now()}_${random}`);
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -1232,6 +1256,164 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       field: field.kind,
       oldValue,
       newValue,
+    });
+  },
+
+  // -----------------------------------------------------------------
+  // Scenario lifecycle (M4a)
+  // -----------------------------------------------------------------
+
+  cloneScenario(fromScenarioId, newName) {
+    const state = get();
+    if (!state.project) return null;
+    const source = state.scenarios.find((s) => s.id === fromScenarioId);
+    if (!source) return null;
+
+    const newId = genScenarioId();
+    const projectId = state.project.id;
+
+    // Deep-clone every nested item with a fresh ID and rewritten scenarioId.
+    // Without this, edits in the clone would mutate the source via shared refs.
+    const newResources: Resource[] = source.resources.map((r) => ({
+      ...r,
+      id: genResourceId(),
+      scenarioId: newId,
+      allocations: r.allocations.map((a) => ({ ...a })),
+    }));
+    const newCloudItems: CloudLineItem[] = source.cloudLineItems.map((c) => ({
+      ...c,
+      id: genCloudLineItemId(),
+      scenarioId: newId,
+    }));
+    const newOtherCosts: OtherCostLineItem[] = source.otherCostLineItems.map((o) => ({
+      ...o,
+      id: genOtherCostLineItemId(),
+      scenarioId: newId,
+    }));
+    const newAssumptions = source.assumptions.map((a) => ({
+      ...a,
+      id: genAssumptionId(),
+      scenarioId: newId,
+    }));
+
+    const maxOrder = state.scenarios.reduce((acc, s) => Math.max(acc, s.order), 0);
+    const finalName = newName?.trim() || `${source.name} (copy)`;
+
+    const newScenario: Scenario = {
+      ...source,
+      id: newId,
+      projectId,
+      name: finalName,
+      isBase: false,                 // clones are never base
+      parentScenarioId: source.id,
+      order: maxOrder + 1,
+      resources: newResources,
+      cloudLineItems: newCloudItems,
+      otherCostLineItems: newOtherCosts,
+      assumptions: newAssumptions,
+      overrides: { ...source.overrides },
+      maData: source.maData ? { ...source.maData } : undefined,
+      createdAt: nowIso(),
+      updatedAt: nowIso(),
+    };
+
+    const nextScenarios = [...state.scenarios, newScenario];
+    const nextProject = bumpProject(state.project);
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, fromScenarioId, {
+      kind: 'scenario.clone',
+      fromScenarioId,
+      toScenarioId: newId,
+      name: finalName,
+    });
+    return newId;
+  },
+
+  deleteScenario(scenarioId) {
+    const state = get();
+    if (!state.project) return;
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+    // Refuse to delete the last scenario or the base scenario.
+    if (state.scenarios.length <= 1) return;
+    if (scenario.isBase) return;
+
+    const nextScenarios = state.scenarios.filter((s) => s.id !== scenarioId);
+
+    // If the deleted scenario was active, switch to base.
+    let nextActiveId = state.activeScenarioId;
+    if (nextActiveId === scenarioId) {
+      nextActiveId = state.project.baseScenarioId;
+    }
+
+    const nextProject: Project = {
+      ...state.project,
+      activeScenarioId: nextActiveId ?? state.project.baseScenarioId,
+      updatedAt: nowIso(),
+    };
+
+    set({
+      project: nextProject,
+      scenarios: nextScenarios,
+      activeScenarioId: nextActiveId,
+    });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'scenario.delete',
+      scenarioId,
+      name: scenario.name,
+    });
+  },
+
+  renameScenario(scenarioId, newName) {
+    const state = get();
+    if (!state.project) return;
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === scenario.name) return;
+
+    const oldName = scenario.name;
+    const updated: Scenario = { ...scenario, name: trimmed, updatedAt: nowIso() };
+    const nextScenarios = state.scenarios.map((s) =>
+      s.id === scenarioId ? updated : s,
+    );
+    const nextProject = bumpProject(state.project);
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'scenario.rename',
+      scenarioId,
+      oldName,
+      newName: trimmed,
+    });
+  },
+
+  setBaseScenario(scenarioId) {
+    const state = get();
+    if (!state.project) return;
+    const target = state.scenarios.find((s) => s.id === scenarioId);
+    if (!target) return;
+    if (state.project.baseScenarioId === scenarioId) return; // no-op
+
+    const oldBaseId = state.project.baseScenarioId;
+    const nextScenarios = state.scenarios.map((s) => {
+      if (s.id === scenarioId) return { ...s, isBase: true, updatedAt: nowIso() };
+      if (s.isBase) return { ...s, isBase: false, updatedAt: nowIso() };
+      return s;
+    });
+    const nextProject: Project = {
+      ...state.project,
+      baseScenarioId: scenarioId,
+      updatedAt: nowIso(),
+    };
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'scenario.setBase',
+      oldBaseScenarioId: oldBaseId,
+      newBaseScenarioId: scenarioId,
     });
   },
 }));

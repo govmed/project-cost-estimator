@@ -17,6 +17,7 @@ import { ResourcePlannerPage } from '@/ui/pages/ResourcePlannerPage';
 import { CloudPlannerPage } from '@/ui/pages/CloudPlannerPage';
 import { OtherCostsPlannerPage } from '@/ui/pages/OtherCostsPlannerPage';
 import { ProjectSetupPage } from '@/ui/pages/ProjectSetupPage';
+import { ScenariosPage } from '@/ui/pages/ScenariosPage';
 import { PageStub } from '@/ui/pages/PageStub';
 
 const SEED_PROJECT_ID = 'proj_vtx_modernization_2026';
@@ -42,16 +43,7 @@ export function AppRoutes() {
             />
           }
         />
-        <Route
-          path="scenarios"
-          element={
-            <PageStub
-              title="Scenarios & Compare"
-              purpose="Side-by-side comparison of 2-4 scenarios."
-              milestone="M4"
-            />
-          }
-        />
+        <Route path="scenarios" element={<ScenariosPage />} />
         <Route
           path="assumptions"
           element={

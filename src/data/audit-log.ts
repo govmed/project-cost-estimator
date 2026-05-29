@@ -2,8 +2,8 @@
  * Audit log - the queue of "what changed."
  *
  * M2b: resource updates. M2c: resource lifecycle. M3b: cloud lifecycle + updates.
- * M3c adds: other-cost lifecycle, other-cost field updates, project-level edits
- * (commercials, identity, FX), and phase lifecycle.
+ * M3c: other-cost lifecycle, project/phase/FX edits.
+ * M4a adds: scenario lifecycle (clone, delete, rename, set-as-base).
  *
  * Storage: append-only to localStorage key sow-calc:audit:<projectId>.
  * Capped at AUDIT_CAP entries with FIFO eviction.
@@ -44,12 +44,17 @@ export type AuditAction =
   | { kind: 'otherCost.delete'; lineItemId: OtherCostLineItemId; item: OtherCostLineItem }
   | { kind: 'otherCost.duplicate'; fromLineItemId: OtherCostLineItemId; toLineItemId: OtherCostLineItemId; item: OtherCostLineItem }
   | { kind: 'otherCost.field.update'; lineItemId: OtherCostLineItemId; field: string; oldValue: unknown; newValue: unknown }
-  // Project / phase / FX edits (M3c)
+  // Project / phase / FX (M3c)
   | { kind: 'project.field.update'; field: string; oldValue: unknown; newValue: unknown }
   | { kind: 'project.fx.update'; currency: string; oldRate: number; newRate: number }
   | { kind: 'phase.add'; phaseId: PhaseId; phase: Phase }
   | { kind: 'phase.delete'; phaseId: PhaseId; phase: Phase }
-  | { kind: 'phase.field.update'; phaseId: PhaseId; field: string; oldValue: unknown; newValue: unknown };
+  | { kind: 'phase.field.update'; phaseId: PhaseId; field: string; oldValue: unknown; newValue: unknown }
+  // Scenario lifecycle (M4a)
+  | { kind: 'scenario.clone'; fromScenarioId: ScenarioId; toScenarioId: ScenarioId; name: string }
+  | { kind: 'scenario.delete'; scenarioId: ScenarioId; name: string }
+  | { kind: 'scenario.rename'; scenarioId: ScenarioId; oldName: string; newName: string }
+  | { kind: 'scenario.setBase'; oldBaseScenarioId: ScenarioId; newBaseScenarioId: ScenarioId };
 
 export interface AuditEntry {
   id: string;
