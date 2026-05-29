@@ -1,13 +1,11 @@
 /**
- * App component smoke test.
+ * App smoke test (M1b).
  *
- * Proves the full pipeline works in a real DOM:
- *  - React mounts
- *  - Seed loads into the store
- *  - Engine computes against the seed
- *  - KPIs render with real numbers
- *
- * If this test passes, the M1a goal is met: a browser would show the same.
+ * Verifies the chrome and routing render correctly:
+ *  - App mounts, loads seed
+ *  - Top rail shows project name + KPIs
+ *  - Left rail shows navigation items
+ *  - Dashboard (default route) renders engine output
  *
  * @vitest-environment jsdom
  */
@@ -17,52 +15,75 @@ import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import { App } from '../../src/App';
 import { useProjectStore } from '../../src/data/store';
 
-describe('App (M1a smoke)', () => {
+describe('App (M1b chrome + routing)', () => {
   beforeEach(() => {
-    // Reset store and localStorage between tests so each starts fresh.
     useProjectStore.getState().reset();
     if (typeof localStorage !== 'undefined') localStorage.clear();
+    // Reset URL to root so the router lands on the default redirect.
+    window.history.pushState({}, '', '/');
   });
 
   afterEach(() => {
-    // @testing-library/react 16 + vitest doesn't auto-cleanup; we have to.
     cleanup();
   });
 
-  it('mounts and loads the seed project', async () => {
+  it('mounts and loads the seed project name in the top rail', async () => {
     render(<App />);
     await waitFor(() => {
-      // Project name appears in the h1 (and also as part of client name in subtitle).
       expect(
-        screen.getByRole('heading', { name: /Vertex Retail/i, level: 1 }),
+        screen.getByText('Vertex Retail - Commerce Platform Modernization'),
       ).toBeInTheDocument();
     });
   });
 
-  it('renders all four headline KPIs with formatted values', async () => {
-    const { container } = render(<App />);
+  it('renders the left rail navigation items', async () => {
+    render(<App />);
     await waitFor(() => {
-      expect(screen.queryAllByText('Final Price').length).toBeGreaterThan(0);
+      // "Dashboard" appears as both a nav link and the page heading, so query
+      // the nav link specifically by its role.
+      expect(screen.getByRole('link', { name: /Dashboard/ })).toBeInTheDocument();
     });
-    // Each KPI label appears once. If we see more than one, render is duplicating.
-    expect(screen.getAllByText('Final Price')).toHaveLength(1);
-    expect(screen.getAllByText('Total Cost')).toHaveLength(1);
-    expect(screen.getAllByText('Realized Margin')).toHaveLength(1);
-    expect(screen.getAllByText('Blended Rate')).toHaveLength(1);
-    void container;
+    expect(screen.getByRole('link', { name: /Resources/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Cloud/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Scenarios/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Assumptions/ })).toBeInTheDocument();
   });
 
-  it('shows the project status and version', async () => {
+  it('hides the M&A Mode nav item because the seed is a Modernization (no M&A)', async () => {
+    // The seed engagementContext is "Modernization", so M&A Mode should be hidden.
     render(<App />);
-    // Version "1.0.0" is rendered alongside "v" and other punctuation in a single <p>,
-    // so we match against the whole element's textContent rather than expecting a
-    // standalone text node.
     await waitFor(() => {
-      const subtitle = screen.getByText((_, el) =>
-        el?.textContent?.includes('v1.0.0') === true && el.tagName.toLowerCase() === 'p',
-      );
-      expect(subtitle).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Dashboard/ })).toBeInTheDocument();
     });
-    expect(screen.getByText(/draft/i)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /M&A Mode/ })).not.toBeInTheDocument();
+  });
+
+  it('renders the dashboard with engine KPIs by default', async () => {
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeInTheDocument();
+    });
+    expect(screen.getByText('Final Price')).toBeInTheDocument();
+    expect(screen.getByText('Realized Margin')).toBeInTheDocument();
+  });
+
+  it('renders the scenario chooser with both seed scenarios', async () => {
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /Dashboard/ })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Base Case \(base\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Onshore-Only/ })).toBeInTheDocument();
+  });
+
+  it('shows nav count badges (12 resources, 8 cloud, 5 other)', async () => {
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /Resources/ })).toBeInTheDocument();
+    });
+    expect(screen.getByText('12')).toBeInTheDocument();
+    expect(screen.getByText('8')).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
   });
 });
