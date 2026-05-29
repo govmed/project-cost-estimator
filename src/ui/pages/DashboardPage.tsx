@@ -18,6 +18,7 @@
 
 import { useProjectStore } from '@/data/store';
 import { useScenarioTotals } from '@/hooks/useScenarioTotals';
+import { useKpiProvenance } from '@/ui/hooks/useKpiProvenance';
 import { formatMoney, formatPercent } from '@/ui/format';
 import { MonthlyBurnChart } from '@/ui/components/dashboard/MonthlyBurnChart';
 import { HeadcountChart } from '@/ui/components/dashboard/HeadcountChart';
@@ -26,10 +27,17 @@ import {
   BreakdownBars,
   entriesFromBreakdown,
 } from '@/ui/components/dashboard/BreakdownBars';
+import { DefensibilityDrawer } from '@/ui/components/defensibility/DefensibilityDrawer';
+import type { KpiKind } from '@/data/kpi-provenance-types';
+import { useState } from 'react';
 
 export function DashboardPage() {
   const project = useProjectStore((s) => s.project);
   const totals = useScenarioTotals();
+
+  // M5d-1: tracking which KPI's defensibility drawer is open (if any)
+  const [openKpi, setOpenKpi] = useState<KpiKind | null>(null);
+  const provenance = useKpiProvenance(openKpi);
 
   if (!project || !totals) {
     return <div className="px-8 py-12 text-muted-fg">No active scenario.</div>;
@@ -44,7 +52,7 @@ export function DashboardPage() {
         <p className="text-sm text-muted-fg">
           Live engine output for the active scenario. Edit anything in
           Resources, Cloud, Other Costs, or Project Setup and these charts
-          update immediately.
+          update immediately. Click any headline KPI to see what's behind it.
         </p>
       </div>
 
@@ -54,7 +62,11 @@ export function DashboardPage() {
           Headline KPIs
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <BigKpi label="Final Price" value={formatMoney(totals.finalPrice)} />
+          <BigKpi
+            label="Final Price"
+            value={formatMoney(totals.finalPrice)}
+            onClick={() => setOpenKpi({ kind: 'finalPrice' })}
+          />
           <BigKpi label="Total Cost" value={formatMoney(totals.totalCost)} />
           <BigKpi label="Realized Margin" value={formatPercent(totals.realizedMarginPct)} />
           <BigKpi
@@ -126,19 +138,51 @@ export function DashboardPage() {
         Charts powered by <span className="font-mono">recharts ^3.8.1</span>.
         Engine recomputes on every change to project, scenario, or any line item.
       </p>
+
+      <DefensibilityDrawer
+        provenance={provenance}
+        onClose={() => setOpenKpi(null)}
+      />
     </div>
   );
 }
 
-function BigKpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-background p-5">
+function BigKpi({
+  label,
+  value,
+  sub,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  onClick?: () => void;
+}) {
+  const body = (
+    <>
       <div className="text-xs font-medium uppercase tracking-wide text-muted-fg">
         {label}
       </div>
       <div className="mt-2 font-mono text-kpi-sm tabular-money">{value}</div>
       {sub && <div className="mt-1 text-xs text-muted-fg">{sub}</div>}
-    </div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={`Show defensibility for ${label}`}
+        className="rounded-lg border border-border bg-background p-5 text-left transition-colors hover:border-accent/60 hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-accent"
+      >
+        {body}
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-background p-5">{body}</div>
   );
 }
 

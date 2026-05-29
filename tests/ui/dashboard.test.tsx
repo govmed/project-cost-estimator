@@ -103,15 +103,17 @@ describe('Dashboard (M4c)', () => {
     const baseFpText = screen.getByText('Final Price').parentElement!.textContent!;
     expect(baseFpText).toContain('$2,369,903');
 
-    // Switch active to the empty Onshore-Only scenario
+    // Switch active to the populated Onshore-Only scenario
     const state = useProjectStore.getState();
     const onshore = state.scenarios.find((s) => s.name === 'Onshore-Only (Conservative)')!;
     state.setActiveScenario(onshore.id);
 
     await waitFor(() => {
       const fpText = screen.getByText('Final Price').parentElement!.textContent!;
-      // Onshore-Only is empty in the seed - $0 final price
-      expect(fpText).toContain('$0');
+      // Onshore-Only is fully populated with US-Onshore rates (M5c). Same scope
+      // as Base, no offshore/nearshore leverage, so ~44% more expensive.
+      // Expected: $3,402,535.
+      expect(fpText).toContain('$3,402,535');
     });
   });
 });

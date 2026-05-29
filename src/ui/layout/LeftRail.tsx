@@ -33,6 +33,23 @@ export function LeftRail() {
         collapsed ? 'w-14' : 'w-56',
       )}
     >
+      <div className="border-b border-border py-2">
+        <NavLink
+          to="/new"
+          className={({ isActive }) =>
+            clsx(
+              'flex items-center gap-3 px-4 py-2 text-sm transition-colors',
+              isActive
+                ? 'border-l-2 border-accent bg-accent/10 font-medium text-foreground'
+                : 'border-l-2 border-transparent text-muted-fg hover:bg-muted hover:text-foreground',
+            )
+          }
+          title={collapsed ? 'New Project' : undefined}
+        >
+          <span className="w-5 text-center text-base leading-none">＋</span>
+          {!collapsed && <span className="flex-1">New Project</span>}
+        </NavLink>
+      </div>
       <div className="flex-1 py-2">
         {visibleItems.map((item) => {
           const count = item.count ? item.count(activeScenario) : null;

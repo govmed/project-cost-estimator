@@ -21,6 +21,7 @@ import { ScenariosPage } from '@/ui/pages/ScenariosPage';
 import { MAModePage } from '@/ui/pages/MAModePage';
 import { AssumptionLedgerPage } from '@/ui/pages/AssumptionLedgerPage';
 import { AuditLogPage } from '@/ui/pages/AuditLogPage';
+import { NewProjectWizardPage } from '@/ui/pages/NewProjectWizardPage';
 import { PageStub } from '@/ui/pages/PageStub';
 
 // Lazy-load the Dashboard so Recharts ships in its own chunk and isn't
@@ -35,12 +36,25 @@ function DashboardLoading() {
   );
 }
 
+// Same lazy pattern for the Export Center - it pulls in xlsx (~115KB gz)
+// and jspdf + autotable (~85KB gz), which we don't want on other routes.
+const ExportPage = lazy(() =>
+  import('@/ui/pages/ExportPage').then((m) => ({ default: m.ExportPage })),
+);
+
+function ExportLoading() {
+  return (
+    <div className="mx-auto max-w-5xl px-6 py-6 text-muted-fg">Loading export center…</div>
+  );
+}
+
 const SEED_PROJECT_ID = 'proj_vtx_modernization_2026';
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to={`/p/${SEED_PROJECT_ID}/dashboard`} replace />} />
+      <Route path="/new" element={<NewProjectWizardPage />} />
       <Route path="/p/:projectId" element={<AppShell />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route
@@ -61,11 +75,9 @@ export function AppRoutes() {
         <Route
           path="export"
           element={
-            <PageStub
-              title="Export Center"
-              purpose="XLSX, CSV, PDF, share link, JSON."
-              milestone="M5"
-            />
+            <Suspense fallback={<ExportLoading />}>
+              <ExportPage />
+            </Suspense>
           }
         />
         <Route path="audit" element={<AuditLogPage />} />

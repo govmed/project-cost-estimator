@@ -38,6 +38,8 @@ export interface ResourceTableProps {
   };
   /** Total rows in the scenario before filtering, for empty-state messaging. */
   unfilteredCount: number;
+  /** M5d-1: open the Defensibility panel for a resource's billed amount. */
+  onOpenDefensibility?: (resourceId: ResourceId) => void;
 }
 
 export function ResourceTable({
@@ -46,6 +48,7 @@ export function ResourceTable({
   scenarioId,
   totalsFooter,
   unfilteredCount,
+  onOpenDefensibility,
 }: ResourceTableProps) {
   const updateResourceAllocation = useProjectStore((s) => s.updateResourceAllocation);
   const deleteResource = useProjectStore((s) => s.deleteResource);
@@ -135,11 +138,31 @@ export function ResourceTable({
     columnHelper.accessor((row) => row.totals.billedAmount.amount, {
       id: 'billed',
       header: () => <div className="text-right">Bill</div>,
-      cell: (info) => (
-        <div className="text-right font-mono text-sm tabular-money text-foreground">
-          {formatMoney(info.getValue())}
-        </div>
-      ),
+      cell: (info) => {
+        const amount = info.getValue();
+        const resourceId = info.row.original.resource.id;
+        const display = formatMoney(amount);
+        if (onOpenDefensibility) {
+          return (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenDefensibility(resourceId);
+              }}
+              aria-label={`Show defensibility for resource bill amount`}
+              className="w-full text-right font-mono text-sm tabular-money text-foreground hover:underline focus:outline-none focus:ring-1 focus:ring-accent rounded"
+            >
+              {display}
+            </button>
+          );
+        }
+        return (
+          <div className="text-right font-mono text-sm tabular-money text-foreground">
+            {display}
+          </div>
+        );
+      },
     }),
 
     columnHelper.accessor((row) => row.totals.internalCost.amount, {
