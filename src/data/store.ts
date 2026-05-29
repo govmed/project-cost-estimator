@@ -14,7 +14,7 @@
  */
 
 import { create } from 'zustand';
-import type { Project } from '@/types/project';
+import type { Project, Phase, ProjectStatus, EngagementType, EngagementContext } from '@/types/project';
 import type { Scenario } from '@/types/scenario';
 import type { Resource } from '@/types/resource';
 import type {
@@ -25,15 +25,23 @@ import type {
   Environment,
   RampCurve,
 } from '@/types/cloud';
-import type { Money } from '@/types/money';
+import type {
+  OtherCostLineItem,
+  OtherCostCategory,
+  PricingUnit,
+} from '@/types/other-costs';
+import type { Money, CurrencyCode } from '@/types/money';
 import type {
   ScenarioId,
   ResourceId,
   PhaseId,
   CloudLineItemId,
+  OtherCostLineItemId,
 } from '@/types/ids';
 import { ResourceId as makeResourceId } from '@/types/ids';
 import { CloudLineItemId as makeCloudLineItemId } from '@/types/ids';
+import { OtherCostLineItemId as makeOtherCostLineItemId } from '@/types/ids';
+import { PhaseId as makePhaseId } from '@/types/ids';
 import { LocalStorageProvider } from './local-storage-provider';
 import type { Storage } from './storage';
 import { appendAudit } from './audit-log';
@@ -90,6 +98,62 @@ export type CloudLineItemField =
   | { kind: 'includeInRunRate'; value: boolean }
   | { kind: 'description'; value: string };
 
+export interface NewOtherCostInput {
+  category: OtherCostCategory;
+  name: string;
+  unitCost: Money;
+  quantity: number;
+  pricingUnit: PricingUnit;
+  vendor?: string;
+  description?: string;
+  userCount?: number;
+  phaseId?: PhaseId;
+  includeInRunRate?: boolean;
+  markupPct?: number;
+}
+
+export type OtherCostField =
+  | { kind: 'name'; value: string }
+  | { kind: 'category'; value: OtherCostCategory }
+  | { kind: 'vendor'; value: string }
+  | { kind: 'description'; value: string }
+  | { kind: 'unitCostAmount'; value: number }
+  | { kind: 'quantity'; value: number }
+  | { kind: 'pricingUnit'; value: PricingUnit }
+  | { kind: 'userCount'; value: number }
+  | { kind: 'phaseId'; value: PhaseId | null }
+  | { kind: 'includeInRunRate'; value: boolean }
+  | { kind: 'markupPct'; value: number }
+  | { kind: 'notes'; value: string };
+
+export type ProjectField =
+  | { kind: 'name'; value: string }
+  | { kind: 'client'; value: string }
+  | { kind: 'sowReference'; value: string }
+  | { kind: 'version'; value: string }
+  | { kind: 'status'; value: ProjectStatus }
+  | { kind: 'engagementType'; value: EngagementType }
+  | { kind: 'engagementContext'; value: EngagementContext }
+  | { kind: 'targetMarginPct'; value: number }
+  | { kind: 'discountPct'; value: number }
+  | { kind: 'contingencyPct'; value: number }
+  | { kind: 'managementReservePct'; value: number };
+
+export type PhaseField =
+  | { kind: 'name'; value: string }
+  | { kind: 'durationWeeks'; value: number }
+  | { kind: 'offsetWeeks'; value: number }
+  | { kind: 'order'; value: number }
+  | { kind: 'description'; value: string };
+
+export interface NewPhaseInput {
+  name: string;
+  durationWeeks: number;
+  offsetWeeks: number;
+  order?: number;
+  description?: string;
+}
+
 interface ProjectState {
   project: Project | null;
   scenarios: Scenario[];
@@ -124,6 +188,23 @@ interface ProjectState {
     lineItemId: CloudLineItemId,
     field: CloudLineItemField,
   ): void;
+
+  // Other-cost actions (M3c)
+  addOtherCostLineItem(scenarioId: ScenarioId, input: NewOtherCostInput): OtherCostLineItemId;
+  deleteOtherCostLineItem(scenarioId: ScenarioId, lineItemId: OtherCostLineItemId): void;
+  duplicateOtherCostLineItem(scenarioId: ScenarioId, lineItemId: OtherCostLineItemId): OtherCostLineItemId | null;
+  updateOtherCostLineItemField(
+    scenarioId: ScenarioId,
+    lineItemId: OtherCostLineItemId,
+    field: OtherCostField,
+  ): void;
+
+  // Project / phase / FX edits (M3c)
+  updateProjectField(field: ProjectField): void;
+  updateFxRate(currency: CurrencyCode, rate: number): void;
+  addPhase(input: NewPhaseInput): PhaseId;
+  deletePhase(phaseId: PhaseId): void;
+  updatePhase(phaseId: PhaseId, field: PhaseField): void;
 }
 
 function clampAllocation(v: number): number {
@@ -165,6 +246,18 @@ function updateScenarioCloudItems(
   return { ...scenario, cloudLineItems: next, updatedAt: nowIso() };
 }
 
+function updateScenarioOtherCosts(
+  scenario: Scenario,
+  lineItemId: OtherCostLineItemId,
+  mutate: (item: OtherCostLineItem) => OtherCostLineItem,
+): Scenario {
+  const idx = scenario.otherCostLineItems.findIndex((i) => i.id === lineItemId);
+  if (idx === -1) return scenario;
+  const next = scenario.otherCostLineItems.slice();
+  next[idx] = mutate(next[idx]);
+  return { ...scenario, otherCostLineItems: next, updatedAt: nowIso() };
+}
+
 function replaceScenario(scenarios: Scenario[], updated: Scenario): Scenario[] {
   return scenarios.map((s) => (s.id === updated.id ? updated : s));
 }
@@ -183,6 +276,22 @@ function genCloudLineItemId(): CloudLineItemId {
       ? crypto.randomUUID().slice(0, 8)
       : Math.random().toString(36).slice(2, 10);
   return makeCloudLineItemId(`cli_${Date.now()}_${random}`);
+}
+
+function genOtherCostLineItemId(): OtherCostLineItemId {
+  const random =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+  return makeOtherCostLineItemId(`oci_${Date.now()}_${random}`);
+}
+
+function genPhaseId(): PhaseId {
+  const random =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+  return makePhaseId(`phase_${Date.now()}_${random}`);
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -653,6 +762,473 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     appendAudit(nextProject.id, scenarioId, {
       kind: 'cloud.field.update',
       lineItemId,
+      field: field.kind,
+      oldValue,
+      newValue,
+    });
+  },
+
+  // -----------------------------------------------------------------
+  // Other-cost line item actions (M3c)
+  // -----------------------------------------------------------------
+
+  addOtherCostLineItem(scenarioId, input) {
+    const state = get();
+    if (!state.project) return genOtherCostLineItemId();
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return genOtherCostLineItemId();
+
+    const newId = genOtherCostLineItemId();
+    const newItem: OtherCostLineItem = {
+      id: newId,
+      scenarioId,
+      category: input.category,
+      name: input.name,
+      description: input.description,
+      vendor: input.vendor,
+      unitCost: input.unitCost,
+      quantity: input.quantity,
+      pricingUnit: input.pricingUnit,
+      userCount: input.userCount,
+      phaseId: input.phaseId,
+      includeInRunRate: input.includeInRunRate ?? false,
+      markupPct: input.markupPct,
+    };
+
+    const updatedScenario: Scenario = {
+      ...scenario,
+      otherCostLineItems: [...scenario.otherCostLineItems, newItem],
+      updatedAt: nowIso(),
+    };
+    const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
+    const nextProject = bumpProject(state.project);
+
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'otherCost.add',
+      lineItemId: newId,
+      item: newItem,
+    });
+    return newId;
+  },
+
+  deleteOtherCostLineItem(scenarioId, lineItemId) {
+    const state = get();
+    if (!state.project) return;
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+    const idx = scenario.otherCostLineItems.findIndex((i) => i.id === lineItemId);
+    if (idx === -1) return;
+    const removed = scenario.otherCostLineItems[idx];
+
+    const updatedScenario: Scenario = {
+      ...scenario,
+      otherCostLineItems: scenario.otherCostLineItems.filter((i) => i.id !== lineItemId),
+      updatedAt: nowIso(),
+    };
+    const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
+    const nextProject = bumpProject(state.project);
+
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'otherCost.delete',
+      lineItemId,
+      item: removed,
+    });
+  },
+
+  duplicateOtherCostLineItem(scenarioId, lineItemId) {
+    const state = get();
+    if (!state.project) return null;
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return null;
+    const source = scenario.otherCostLineItems.find((i) => i.id === lineItemId);
+    if (!source) return null;
+
+    const newId = genOtherCostLineItemId();
+    const copy: OtherCostLineItem = {
+      ...source,
+      id: newId,
+      scenarioId,
+      name: `${source.name} (copy)`,
+    };
+
+    const sourceIdx = scenario.otherCostLineItems.findIndex((i) => i.id === lineItemId);
+    const next = [...scenario.otherCostLineItems];
+    next.splice(sourceIdx + 1, 0, copy);
+
+    const updatedScenario: Scenario = {
+      ...scenario,
+      otherCostLineItems: next,
+      updatedAt: nowIso(),
+    };
+    const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
+    const nextProject = bumpProject(state.project);
+
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'otherCost.duplicate',
+      fromLineItemId: lineItemId,
+      toLineItemId: newId,
+      item: copy,
+    });
+    return newId;
+  },
+
+  updateOtherCostLineItemField(scenarioId, lineItemId, field) {
+    const state = get();
+    if (!state.project) return;
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+    const item = scenario.otherCostLineItems.find((i) => i.id === lineItemId);
+    if (!item) return;
+
+    let updated: OtherCostLineItem | null = null;
+    let oldValue: unknown = null;
+    let newValue: unknown = null;
+
+    switch (field.kind) {
+      case 'name': {
+        if (item.name === field.value) return;
+        oldValue = item.name;
+        newValue = field.value;
+        updated = { ...item, name: field.value };
+        break;
+      }
+      case 'category': {
+        if (item.category === field.value) return;
+        oldValue = item.category;
+        newValue = field.value;
+        updated = { ...item, category: field.value };
+        break;
+      }
+      case 'vendor': {
+        const cur = item.vendor ?? '';
+        if (cur === field.value) return;
+        oldValue = cur;
+        newValue = field.value;
+        updated = { ...item, vendor: field.value || undefined };
+        break;
+      }
+      case 'description': {
+        const cur = item.description ?? '';
+        if (cur === field.value) return;
+        oldValue = cur;
+        newValue = field.value;
+        updated = { ...item, description: field.value || undefined };
+        break;
+      }
+      case 'unitCostAmount': {
+        const next = Math.max(0, field.value);
+        if (item.unitCost.amount === next) return;
+        oldValue = item.unitCost.amount;
+        newValue = next;
+        updated = { ...item, unitCost: { ...item.unitCost, amount: next } };
+        break;
+      }
+      case 'quantity': {
+        const next = Math.max(0, field.value);
+        if (item.quantity === next) return;
+        oldValue = item.quantity;
+        newValue = next;
+        updated = { ...item, quantity: next };
+        break;
+      }
+      case 'pricingUnit': {
+        if (item.pricingUnit === field.value) return;
+        oldValue = item.pricingUnit;
+        newValue = field.value;
+        updated = { ...item, pricingUnit: field.value };
+        break;
+      }
+      case 'userCount': {
+        const cur = item.userCount ?? 0;
+        const next = Math.max(0, Math.round(field.value));
+        if (cur === next) return;
+        oldValue = cur;
+        newValue = next;
+        updated = { ...item, userCount: next || undefined };
+        break;
+      }
+      case 'phaseId': {
+        const cur = item.phaseId ?? null;
+        if (cur === field.value) return;
+        oldValue = cur;
+        newValue = field.value;
+        updated = { ...item, phaseId: field.value ?? undefined };
+        break;
+      }
+      case 'includeInRunRate': {
+        if (item.includeInRunRate === field.value) return;
+        oldValue = item.includeInRunRate;
+        newValue = field.value;
+        updated = { ...item, includeInRunRate: field.value };
+        break;
+      }
+      case 'markupPct': {
+        const cur = item.markupPct ?? 0;
+        const next = Math.max(0, field.value);
+        if (cur === next) return;
+        oldValue = cur;
+        newValue = next;
+        updated = { ...item, markupPct: next || undefined };
+        break;
+      }
+      case 'notes': {
+        const cur = item.notes ?? '';
+        if (cur === field.value) return;
+        oldValue = cur;
+        newValue = field.value;
+        updated = { ...item, notes: field.value || undefined };
+        break;
+      }
+    }
+
+    if (!updated) return;
+
+    const updatedScenario = updateScenarioOtherCosts(scenario, lineItemId, () => updated);
+    const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
+    const nextProject = bumpProject(state.project);
+
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'otherCost.field.update',
+      lineItemId,
+      field: field.kind,
+      oldValue,
+      newValue,
+    });
+  },
+
+  // -----------------------------------------------------------------
+  // Project / phase / FX edits (M3c)
+  // -----------------------------------------------------------------
+
+  updateProjectField(field) {
+    const state = get();
+    if (!state.project) return;
+    const project = state.project;
+
+    let updated: Project | null = null;
+    let oldValue: unknown = null;
+    const newValue = field.value;
+
+    switch (field.kind) {
+      case 'name':
+        if (project.name === field.value) return;
+        oldValue = project.name;
+        updated = { ...project, name: field.value };
+        break;
+      case 'client':
+        if (project.client === field.value) return;
+        oldValue = project.client;
+        updated = { ...project, client: field.value };
+        break;
+      case 'sowReference': {
+        const cur = project.sowReference ?? '';
+        if (cur === field.value) return;
+        oldValue = cur;
+        updated = { ...project, sowReference: field.value || undefined };
+        break;
+      }
+      case 'version':
+        if (project.version === field.value) return;
+        oldValue = project.version;
+        updated = { ...project, version: field.value };
+        break;
+      case 'status':
+        if (project.status === field.value) return;
+        oldValue = project.status;
+        updated = { ...project, status: field.value };
+        break;
+      case 'engagementType':
+        if (project.engagementType === field.value) return;
+        oldValue = project.engagementType;
+        updated = { ...project, engagementType: field.value };
+        break;
+      case 'engagementContext':
+        if (project.engagementContext === field.value) return;
+        oldValue = project.engagementContext;
+        updated = { ...project, engagementContext: field.value };
+        break;
+      case 'targetMarginPct': {
+        const next = Math.max(-100, Math.min(99, field.value));
+        if (project.targetMarginPct === next) return;
+        oldValue = project.targetMarginPct;
+        updated = { ...project, targetMarginPct: next };
+        break;
+      }
+      case 'discountPct': {
+        const next = Math.max(0, Math.min(100, field.value));
+        if (project.discountPct === next) return;
+        oldValue = project.discountPct;
+        updated = { ...project, discountPct: next };
+        break;
+      }
+      case 'contingencyPct': {
+        const next = Math.max(0, Math.min(100, field.value));
+        if (project.contingencyPct === next) return;
+        oldValue = project.contingencyPct;
+        updated = { ...project, contingencyPct: next };
+        break;
+      }
+      case 'managementReservePct': {
+        const next = Math.max(0, Math.min(100, field.value));
+        if (project.managementReservePct === next) return;
+        oldValue = project.managementReservePct;
+        updated = { ...project, managementReservePct: next };
+        break;
+      }
+    }
+
+    if (!updated) return;
+    const nextProject = bumpProject(updated);
+    set({ project: nextProject });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, state.activeScenarioId ?? nextProject.activeScenarioId, {
+      kind: 'project.field.update',
+      field: field.kind,
+      oldValue,
+      newValue,
+    });
+  },
+
+  updateFxRate(currency, rate) {
+    const state = get();
+    if (!state.project) return;
+    const project = state.project;
+    if (currency === project.baseCurrency) return; // Can't edit base FX (always 1.0)
+    const oldRate = project.fxRates[currency] ?? 0;
+    const next = Math.max(0, rate);
+    if (oldRate === next) return;
+    const updated: Project = {
+      ...project,
+      fxRates: { ...project.fxRates, [currency]: next },
+    };
+    const nextProject = bumpProject(updated);
+    set({ project: nextProject });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, state.activeScenarioId ?? nextProject.activeScenarioId, {
+      kind: 'project.fx.update',
+      currency,
+      oldRate,
+      newRate: next,
+    });
+  },
+
+  addPhase(input) {
+    const state = get();
+    if (!state.project) return genPhaseId();
+    const project = state.project;
+    const newId = genPhaseId();
+    const nextOrder = input.order ?? (project.phases.length + 1);
+    const newPhase: Phase = {
+      id: newId,
+      name: input.name,
+      order: nextOrder,
+      durationWeeks: input.durationWeeks,
+      offsetWeeks: input.offsetWeeks,
+      description: input.description,
+    };
+    const updated: Project = {
+      ...project,
+      phases: [...project.phases, newPhase].sort((a, b) => a.order - b.order),
+    };
+    const nextProject = bumpProject(updated);
+    set({ project: nextProject });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, state.activeScenarioId ?? nextProject.activeScenarioId, {
+      kind: 'phase.add',
+      phaseId: newId,
+      phase: newPhase,
+    });
+    return newId;
+  },
+
+  deletePhase(phaseId) {
+    const state = get();
+    if (!state.project) return;
+    const project = state.project;
+    const removed = project.phases.find((p) => p.id === phaseId);
+    if (!removed) return;
+    const updated: Project = {
+      ...project,
+      phases: project.phases.filter((p) => p.id !== phaseId),
+    };
+    const nextProject = bumpProject(updated);
+    set({ project: nextProject });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, state.activeScenarioId ?? nextProject.activeScenarioId, {
+      kind: 'phase.delete',
+      phaseId,
+      phase: removed,
+    });
+  },
+
+  updatePhase(phaseId, field) {
+    const state = get();
+    if (!state.project) return;
+    const project = state.project;
+    const phase = project.phases.find((p) => p.id === phaseId);
+    if (!phase) return;
+
+    let updatedPhase: Phase | null = null;
+    let oldValue: unknown = null;
+    const newValue = field.value;
+
+    switch (field.kind) {
+      case 'name':
+        if (phase.name === field.value) return;
+        oldValue = phase.name;
+        updatedPhase = { ...phase, name: field.value };
+        break;
+      case 'durationWeeks': {
+        const next = Math.max(0, field.value);
+        if (phase.durationWeeks === next) return;
+        oldValue = phase.durationWeeks;
+        updatedPhase = { ...phase, durationWeeks: next };
+        break;
+      }
+      case 'offsetWeeks': {
+        const next = Math.max(0, field.value);
+        if (phase.offsetWeeks === next) return;
+        oldValue = phase.offsetWeeks;
+        updatedPhase = { ...phase, offsetWeeks: next };
+        break;
+      }
+      case 'order': {
+        const next = Math.max(1, Math.round(field.value));
+        if (phase.order === next) return;
+        oldValue = phase.order;
+        updatedPhase = { ...phase, order: next };
+        break;
+      }
+      case 'description': {
+        const cur = phase.description ?? '';
+        if (cur === field.value) return;
+        oldValue = cur;
+        updatedPhase = { ...phase, description: field.value || undefined };
+        break;
+      }
+    }
+    if (!updatedPhase) return;
+
+    const updated: Project = {
+      ...project,
+      phases: project.phases
+        .map((p) => (p.id === phaseId ? updatedPhase! : p))
+        .sort((a, b) => a.order - b.order),
+    };
+    const nextProject = bumpProject(updated);
+    set({ project: nextProject });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, state.activeScenarioId ?? nextProject.activeScenarioId, {
+      kind: 'phase.field.update',
+      phaseId,
       field: field.kind,
       oldValue,
       newValue,

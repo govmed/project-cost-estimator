@@ -15,6 +15,8 @@ import { AppShell } from '@/ui/layout/AppShell';
 import { DashboardPage } from '@/ui/pages/DashboardPage';
 import { ResourcePlannerPage } from '@/ui/pages/ResourcePlannerPage';
 import { CloudPlannerPage } from '@/ui/pages/CloudPlannerPage';
+import { OtherCostsPlannerPage } from '@/ui/pages/OtherCostsPlannerPage';
+import { ProjectSetupPage } from '@/ui/pages/ProjectSetupPage';
 import { PageStub } from '@/ui/pages/PageStub';
 
 const SEED_PROJECT_ID = 'proj_vtx_modernization_2026';
@@ -27,27 +29,9 @@ export function AppRoutes() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="resources" element={<ResourcePlannerPage />} />
-        <Route
-          path="setup"
-          element={
-            <PageStub
-              title="Project Setup"
-              purpose="Define the engagement: type, phases, contingency, FX rates."
-              milestone="M3"
-            />
-          }
-        />
+        <Route path="setup" element={<ProjectSetupPage />} />
         <Route path="cloud" element={<CloudPlannerPage />} />
-        <Route
-          path="other-costs"
-          element={
-            <PageStub
-              title="Other Costs"
-              purpose="Licenses, hardware, travel, training, subcontractors."
-              milestone="M3"
-            />
-          }
-        />
+        <Route path="other-costs" element={<OtherCostsPlannerPage />} />
         <Route
           path="ma-mode"
           element={

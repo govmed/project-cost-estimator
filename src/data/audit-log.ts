@@ -1,18 +1,26 @@
 /**
  * Audit log - the queue of "what changed."
  *
- * M2b started writing entries; M2c added resource lifecycle actions
- * (add / delete / duplicate). M3b adds cloud line item actions.
- * M5 will render an Audit Log screen against these entries.
+ * M2b: resource updates. M2c: resource lifecycle. M3b: cloud lifecycle + updates.
+ * M3c adds: other-cost lifecycle, other-cost field updates, project-level edits
+ * (commercials, identity, FX), and phase lifecycle.
  *
- * Storage layout: append-only to localStorage key sow-calc:audit:<projectId>.
- * Capped at AUDIT_CAP entries with oldest-first eviction (per the data model
- * in #3 and the Phase 1 audit weakness disclosed in #9).
+ * Storage: append-only to localStorage key sow-calc:audit:<projectId>.
+ * Capped at AUDIT_CAP entries with FIFO eviction.
  */
 
-import type { ProjectId, ResourceId, ScenarioId, PhaseId, CloudLineItemId } from '@/types/ids';
+import type {
+  ProjectId,
+  ResourceId,
+  ScenarioId,
+  PhaseId,
+  CloudLineItemId,
+  OtherCostLineItemId,
+} from '@/types/ids';
 import type { Resource } from '@/types/resource';
 import type { CloudLineItem } from '@/types/cloud';
+import type { OtherCostLineItem } from '@/types/other-costs';
+import type { Phase } from '@/types/project';
 
 export type AuditAction =
   // Resource updates (M2b)
@@ -30,8 +38,18 @@ export type AuditAction =
   | { kind: 'cloud.add'; lineItemId: CloudLineItemId; item: CloudLineItem }
   | { kind: 'cloud.delete'; lineItemId: CloudLineItemId; item: CloudLineItem }
   | { kind: 'cloud.duplicate'; fromLineItemId: CloudLineItemId; toLineItemId: CloudLineItemId; item: CloudLineItem }
-  // Cloud field updates (M3b)
-  | { kind: 'cloud.field.update'; lineItemId: CloudLineItemId; field: string; oldValue: unknown; newValue: unknown };
+  | { kind: 'cloud.field.update'; lineItemId: CloudLineItemId; field: string; oldValue: unknown; newValue: unknown }
+  // Other-cost lifecycle (M3c)
+  | { kind: 'otherCost.add'; lineItemId: OtherCostLineItemId; item: OtherCostLineItem }
+  | { kind: 'otherCost.delete'; lineItemId: OtherCostLineItemId; item: OtherCostLineItem }
+  | { kind: 'otherCost.duplicate'; fromLineItemId: OtherCostLineItemId; toLineItemId: OtherCostLineItemId; item: OtherCostLineItem }
+  | { kind: 'otherCost.field.update'; lineItemId: OtherCostLineItemId; field: string; oldValue: unknown; newValue: unknown }
+  // Project / phase / FX edits (M3c)
+  | { kind: 'project.field.update'; field: string; oldValue: unknown; newValue: unknown }
+  | { kind: 'project.fx.update'; currency: string; oldRate: number; newRate: number }
+  | { kind: 'phase.add'; phaseId: PhaseId; phase: Phase }
+  | { kind: 'phase.delete'; phaseId: PhaseId; phase: Phase }
+  | { kind: 'phase.field.update'; phaseId: PhaseId; field: string; oldValue: unknown; newValue: unknown };
 
 export interface AuditEntry {
   id: string;
@@ -83,7 +101,7 @@ export function appendAudit(
   try {
     localStorage.setItem(key, JSON.stringify(entries));
   } catch {
-    // localStorage full; M5 will surface
+    // localStorage full
   }
 }
 
