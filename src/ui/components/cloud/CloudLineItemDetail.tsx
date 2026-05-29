@@ -1,23 +1,67 @@
 /**
  * CloudLineItemDetail - the right pane of the Cloud Planner.
  *
- * Read-only details for the selected line item. M3a renders all fields
- * as static text; M3b will make each editable using the same
- * EditableField pattern as the resource expanded row.
+ * M3b: all fields are now editable. Commits go through the store via
+ * updateCloudLineItemField; each writes an audit entry.
+ *
+ * Computed fields (effective unit cost, monthly at steady state) update
+ * live as you edit inputs - they're derived from useScenarioTotals.
  */
 
-import type { CloudLineItem } from '@/types/cloud';
+import type { CloudLineItem, CloudCategory, PricingModel, Environment, RampCurve } from '@/types/cloud';
 import type { CloudLineItemTotals } from '@/engine/types';
+import type { ScenarioId } from '@/types/ids';
 import { formatMoney } from '@/ui/format';
+import { useProjectStore } from '@/data/store';
 import { CloudProviderBadge } from './CloudProviderBadge';
 import { RampCurvePreview } from './RampCurvePreview';
+import { EditableField } from '@/ui/components/planner/EditableField';
+import { EditableSelect } from './EditableSelect';
+import { EditableToggle } from './EditableToggle';
+
+const PRICING_MODELS: readonly PricingModel[] = [
+  'OnDemand',
+  'Reserved1yr',
+  'Reserved3yr',
+  'SavingsPlan1yr',
+  'SavingsPlan3yr',
+  'Spot',
+  'BringYourOwn',
+] as const;
+
+const ENVIRONMENTS: readonly Environment[] = ['dev', 'test', 'staging', 'prod', 'dr'] as const;
+
+const CATEGORIES: readonly CloudCategory[] = [
+  'Compute',
+  'Storage',
+  'Database',
+  'Networking',
+  'Security',
+  'Integration',
+  'Observability',
+  'AI/ML',
+  'Backup/DR',
+  'Other',
+] as const;
+
+const RAMP_CURVES: readonly RampCurve[] = [
+  'flat',
+  'linear',
+  'sCurve',
+  'step',
+  'frontLoaded',
+  'backLoaded',
+] as const;
 
 export interface CloudLineItemDetailProps {
   item: CloudLineItem | null;
   totals: CloudLineItemTotals | null;
+  scenarioId: ScenarioId;
 }
 
-export function CloudLineItemDetail({ item, totals }: CloudLineItemDetailProps) {
+export function CloudLineItemDetail({ item, totals, scenarioId }: CloudLineItemDetailProps) {
+  const updateField = useProjectStore((s) => s.updateCloudLineItemField);
+
   if (!item) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border bg-muted/10 p-8 text-center">
@@ -28,7 +72,10 @@ export function CloudLineItemDetail({ item, totals }: CloudLineItemDetailProps) 
     );
   }
 
-  // Effective unit cost after environment multiplier
+  const commit = (field: Parameters<typeof updateField>[2]) => {
+    updateField(scenarioId, item.id, field);
+  };
+
   const effectiveUnitCost = item.unitCost.amount * item.environmentMultiplier;
   const monthlyAtSteady = effectiveUnitCost * item.quantity;
 
@@ -38,131 +85,188 @@ export function CloudLineItemDetail({ item, totals }: CloudLineItemDetailProps) 
       <div>
         <div className="mb-2 flex items-center gap-2">
           <CloudProviderBadge provider={item.provider} />
-          <span className="text-xs uppercase tracking-wide text-muted-fg">
-            {item.category}
-          </span>
+          <span className="text-xs uppercase tracking-wide text-muted-fg">{item.category}</span>
         </div>
         <h2 className="text-lg font-semibold text-foreground">
           {item.service}
           {item.sku && (
-            <span className="ml-2 font-mono text-sm font-normal text-muted-fg">
-              {item.sku}
-            </span>
+            <span className="ml-2 font-mono text-sm font-normal text-muted-fg">{item.sku}</span>
           )}
         </h2>
-        {item.description && (
-          <p className="mt-1 text-sm text-muted-fg">{item.description}</p>
-        )}
       </div>
 
-      {/* Pricing block */}
-      <div>
-        <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-fg">
-          Pricing
-        </h3>
-        <dl className="grid grid-cols-2 gap-3 text-sm">
-          <Field label="Pricing Model" value={item.pricingModel} mono={false} />
-          <Field label="Region" value={item.region} mono={true} />
-          <Field
-            label="Unit Cost"
-            value={`${formatMoney(item.unitCost)} / ${item.unitName}`}
-            mono
-            override={item.unitCostOverridden ? 'edited' : undefined}
-          />
-          <Field label="Quantity" value={item.quantity.toString()} mono />
-          <Field label="Environment" value={item.environment} mono={false} />
-          <Field
-            label="Env Multiplier"
-            value={item.environmentMultiplier.toFixed(2)}
-            mono
-          />
-        </dl>
-      </div>
+      {/* Identity */}
+      <Section title="Identity">
+        <EditableField
+          label="Service"
+          value={item.service}
+          kind="text"
+          onCommit={(v) => commit({ kind: 'service', value: String(v) })}
+        />
+        <EditableField
+          label="SKU"
+          value={item.sku ?? ''}
+          kind="text"
+          onCommit={(v) => commit({ kind: 'sku', value: String(v) })}
+        />
+        <EditableSelect<CloudCategory>
+          label="Category"
+          value={item.category}
+          options={CATEGORIES}
+          onCommit={(v) => commit({ kind: 'category', value: v })}
+        />
+        <EditableField
+          label="Description"
+          value={item.description ?? ''}
+          kind="text"
+          multiline
+          onCommit={(v) => commit({ kind: 'description', value: String(v) })}
+        />
+      </Section>
 
-      {/* Computed totals */}
-      <div>
-        <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-fg">
-          Engine output
-        </h3>
-        <dl className="grid grid-cols-2 gap-3 text-sm">
-          <Field
-            label="Effective Unit Cost"
-            value={`${formatMoney(effectiveUnitCost, item.unitCost.currency)} / ${item.unitName}`}
-            mono
-            hint="unitCost × envMultiplier"
+      {/* Pricing */}
+      <Section title="Pricing">
+        <EditableSelect<PricingModel>
+          label="Pricing Model"
+          value={item.pricingModel}
+          options={PRICING_MODELS}
+          onCommit={(v) => commit({ kind: 'pricingModel', value: v })}
+        />
+        <EditableField
+          label="Region"
+          value={item.region}
+          kind="text"
+          onCommit={(v) => commit({ kind: 'region', value: String(v) })}
+        />
+        <div className="flex flex-col gap-1">
+          <EditableField
+            label={`Unit Cost ${item.unitCostOverridden ? '(edited)' : ''}`}
+            value={item.unitCost.amount}
+            kind="number"
+            min={0}
+            prefix="$"
+            suffix={` / ${item.unitName}`}
+            onCommit={(v) => commit({ kind: 'unitCostAmount', value: Number(v) })}
           />
-          <Field
-            label="Monthly at Steady State"
-            value={formatMoney(monthlyAtSteady, item.unitCost.currency)}
-            mono
-            hint="effective × quantity"
-          />
-          {totals && (
-            <>
-              <Field
-                label="Project Duration Cost"
-                value={formatMoney(totals.projectDurationCost)}
-                mono
-              />
-              <Field
-                label="Run-Rate Monthly"
-                value={formatMoney(totals.runRateMonthly)}
-                mono
-                hint={
-                  item.includeInRunRate
-                    ? 'in run-rate'
-                    : 'excluded from run-rate'
-                }
-              />
-            </>
+          {item.unitCostOverridden && (
+            <span className="text-[10px] font-medium uppercase tracking-wide text-status-warn">
+              edited (off catalog)
+            </span>
           )}
-        </dl>
-      </div>
+        </div>
+        <EditableField
+          label="Quantity"
+          value={item.quantity}
+          kind="number"
+          min={0}
+          onCommit={(v) => commit({ kind: 'quantity', value: Number(v) })}
+        />
+        <EditableField
+          label="Unit Name"
+          value={item.unitName}
+          kind="text"
+          onCommit={(v) => commit({ kind: 'unitName', value: String(v) })}
+        />
+      </Section>
 
-      {/* Ramp curve */}
+      {/* Environment */}
+      <Section title="Environment">
+        <EditableSelect<Environment>
+          label="Environment"
+          value={item.environment}
+          options={ENVIRONMENTS}
+          onCommit={(v) => commit({ kind: 'environment', value: v })}
+        />
+        <EditableField
+          label="Env Multiplier"
+          value={item.environmentMultiplier}
+          kind="number"
+          min={0}
+          onCommit={(v) => commit({ kind: 'environmentMultiplier', value: Number(v) })}
+        />
+        <EditableToggle
+          label="Include in Run-Rate"
+          value={item.includeInRunRate}
+          onCommit={(v) => commit({ kind: 'includeInRunRate', value: v })}
+          hint={{
+            on: 'extends into steady-state Run-Rate projections',
+            off: 'project-only spend; not in Run-Rate',
+          }}
+        />
+      </Section>
+
+      {/* Engine output */}
+      <Section title="Engine output (read-only)">
+        <ReadOnlyField
+          label="Effective Unit Cost"
+          value={`${formatMoney(effectiveUnitCost, item.unitCost.currency)} / ${item.unitName}`}
+          hint="unitCost x envMultiplier"
+        />
+        <ReadOnlyField
+          label="Monthly at Steady State"
+          value={formatMoney(monthlyAtSteady, item.unitCost.currency)}
+          hint="effective x quantity"
+        />
+        {totals && (
+          <>
+            <ReadOnlyField
+              label="Project Duration Cost"
+              value={formatMoney(totals.projectDurationCost)}
+            />
+            <ReadOnlyField
+              label="Run-Rate Monthly"
+              value={formatMoney(totals.runRateMonthly)}
+              hint={item.includeInRunRate ? 'in run-rate' : 'excluded from run-rate'}
+            />
+          </>
+        )}
+      </Section>
+
+      {/* Ramp */}
       <div>
-        <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-fg">
-          Ramp curve ({item.rampCurve})
-        </h3>
-        {totals ? (
-          <RampCurvePreview
-            monthlyBurn={totals.monthlyBurn}
-            label={`${item.service} monthly burn`}
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-fg">
+            Ramp curve
+          </h3>
+        </div>
+        <div className="mb-3 max-w-xs">
+          <EditableSelect<RampCurve>
+            label="Curve shape"
+            value={item.rampCurve}
+            options={RAMP_CURVES}
+            onCommit={(v) => commit({ kind: 'rampCurve', value: v })}
           />
+        </div>
+        {totals ? (
+          <RampCurvePreview monthlyBurn={totals.monthlyBurn} label={`${item.service} monthly burn`} />
         ) : (
           <p className="text-sm text-muted-fg">No engine totals available.</p>
         )}
       </div>
 
-      {/* M3a footer note */}
       <div className="rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-muted-fg">
-        <span className="font-medium text-foreground">M3a is read-only.</span>{' '}
-        Editing these fields lands in M3b along with the "+ Add from catalog" flow.
+        <span className="font-medium text-foreground">All fields editable.</span> Click any
+        value to edit; Enter / Tab to commit, Esc to cancel. The detail and the engine
+        totals re-render on every commit.
       </div>
     </div>
   );
 }
 
-interface FieldProps {
-  label: string;
-  value: string;
-  mono?: boolean;
-  hint?: string;
-  override?: string;
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-fg">{title}</h3>
+      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</dl>
+    </div>
+  );
 }
 
-function Field({ label, value, mono = false, hint, override }: FieldProps) {
+function ReadOnlyField({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-xs font-medium uppercase tracking-wide text-muted-fg">
-        {label}
-        {override && (
-          <span className="ml-1 text-status-warn">({override})</span>
-        )}
-      </dt>
-      <dd className={mono ? 'font-mono tabular-money text-foreground' : 'text-foreground'}>
-        {value}
-      </dd>
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted-fg">{label}</dt>
+      <dd className="font-mono tabular-money text-foreground">{value}</dd>
       {hint && <span className="text-[10px] text-muted-fg/80">{hint}</span>}
     </div>
   );

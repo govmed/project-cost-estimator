@@ -1,28 +1,37 @@
 /**
  * Audit log - the queue of "what changed."
  *
- * M2b started writing entries; M2c adds resource lifecycle actions
- * (add / delete / duplicate). M5 will render an Audit Log screen
- * against these entries.
+ * M2b started writing entries; M2c added resource lifecycle actions
+ * (add / delete / duplicate). M3b adds cloud line item actions.
+ * M5 will render an Audit Log screen against these entries.
  *
  * Storage layout: append-only to localStorage key sow-calc:audit:<projectId>.
  * Capped at AUDIT_CAP entries with oldest-first eviction (per the data model
  * in #3 and the Phase 1 audit weakness disclosed in #9).
  */
 
-import type { ProjectId, ResourceId, ScenarioId, PhaseId } from '@/types/ids';
+import type { ProjectId, ResourceId, ScenarioId, PhaseId, CloudLineItemId } from '@/types/ids';
 import type { Resource } from '@/types/resource';
+import type { CloudLineItem } from '@/types/cloud';
 
 export type AuditAction =
+  // Resource updates (M2b)
   | { kind: 'resource.allocation.update'; resourceId: ResourceId; phaseId: PhaseId; oldPct: number; newPct: number }
   | { kind: 'resource.rate.update'; resourceId: ResourceId; field: 'billRate' | 'internalCostRate'; oldAmount: number; newAmount: number }
   | { kind: 'resource.utilization.update'; resourceId: ResourceId; oldPct: number; newPct: number }
   | { kind: 'resource.hoursPerWeek.update'; resourceId: ResourceId; oldHours: number; newHours: number }
   | { kind: 'resource.name.update'; resourceId: ResourceId; oldName: string; newName: string }
   | { kind: 'resource.notes.update'; resourceId: ResourceId; oldNotes: string; newNotes: string }
+  // Resource lifecycle (M2c)
   | { kind: 'resource.add'; resourceId: ResourceId; resource: Resource }
   | { kind: 'resource.delete'; resourceId: ResourceId; resource: Resource }
-  | { kind: 'resource.duplicate'; fromResourceId: ResourceId; toResourceId: ResourceId; resource: Resource };
+  | { kind: 'resource.duplicate'; fromResourceId: ResourceId; toResourceId: ResourceId; resource: Resource }
+  // Cloud lifecycle (M3b)
+  | { kind: 'cloud.add'; lineItemId: CloudLineItemId; item: CloudLineItem }
+  | { kind: 'cloud.delete'; lineItemId: CloudLineItemId; item: CloudLineItem }
+  | { kind: 'cloud.duplicate'; fromLineItemId: CloudLineItemId; toLineItemId: CloudLineItemId; item: CloudLineItem }
+  // Cloud field updates (M3b)
+  | { kind: 'cloud.field.update'; lineItemId: CloudLineItemId; field: string; oldValue: unknown; newValue: unknown };
 
 export interface AuditEntry {
   id: string;

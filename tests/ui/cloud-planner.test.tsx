@@ -84,7 +84,8 @@ describe('Cloud Planner (M3a)', () => {
       // Detail pane shows "Pricing" header for the selected item
       expect(screen.getByText('Pricing')).toBeInTheDocument();
     });
-    expect(screen.getByText('Engine output')).toBeInTheDocument();
+    // M3b heading is "Engine output (read-only)"
+    expect(screen.getByText(/Engine output/)).toBeInTheDocument();
   });
 
   it('renders the ramp curve preview for the selected item', async () => {
@@ -102,16 +103,18 @@ describe('Cloud Planner (M3a)', () => {
       expect(screen.getByText('Pricing Model')).toBeInTheDocument();
     });
     expect(screen.getByText('Region')).toBeInTheDocument();
-    expect(screen.getByText('Unit Cost')).toBeInTheDocument();
+    // M3b: "Unit Cost" may have an "(edited)" suffix when overridden, so use a regex
+    expect(screen.getByText(/^Unit Cost/)).toBeInTheDocument();
     expect(screen.getByText('Quantity')).toBeInTheDocument();
-    expect(screen.getByText('Environment')).toBeInTheDocument();
+    // M3b has an "Environment" section header AND an "Environment" field label
+    expect(screen.getAllByText('Environment').length).toBeGreaterThanOrEqual(1);
   });
 
   it('clicking a different line item changes the detail pane', async () => {
     const user = userEvent.setup();
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByText('Engine output')).toBeInTheDocument();
+      expect(screen.getByText(/Engine output/)).toBeInTheDocument();
     });
 
     // Pick a list item that's not the default first one. Find the RDS row.
@@ -127,11 +130,11 @@ describe('Cloud Planner (M3a)', () => {
     });
   });
 
-  it('Add from catalog button is disabled (M3a)', async () => {
+  it('Add from catalog button is wired (M3b)', async () => {
     render(<App />);
     await waitFor(() => {
       const btn = screen.getByRole('button', { name: /Add from catalog/i });
-      expect(btn).toBeDisabled();
+      expect(btn).not.toBeDisabled();
     });
   });
 
