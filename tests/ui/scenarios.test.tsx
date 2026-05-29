@@ -27,7 +27,7 @@ function scenarioCount(): number {
   return useProjectStore.getState().scenarios.length;
 }
 
-describe('Scenarios page (M4a)', () => {
+describe('Scenarios page (M4a, updated for M4b)', () => {
   beforeEach(() => {
     useProjectStore.getState().reset();
     if (typeof localStorage !== 'undefined') localStorage.clear();
@@ -40,7 +40,7 @@ describe('Scenarios page (M4a)', () => {
   it('renders the heading and both seed scenarios', async () => {
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Scenarios', level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Scenarios/, level: 1 })).toBeInTheDocument();
     });
     // Seed: Base Case + Onshore-Only (Conservative). Each name appears in the
     // table row AND in the top-rail dropdown.
@@ -52,7 +52,7 @@ describe('Scenarios page (M4a)', () => {
     const user = userEvent.setup();
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Scenarios', level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Scenarios/, level: 1 })).toBeInTheDocument();
     });
     const before = scenarioCount();
 
@@ -68,7 +68,7 @@ describe('Scenarios page (M4a)', () => {
     const user = userEvent.setup();
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Scenarios', level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Scenarios/, level: 1 })).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole('button', { name: /\+ Clone active scenario/i }));
@@ -93,7 +93,7 @@ describe('Scenarios page (M4a)', () => {
     const user = userEvent.setup();
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Scenarios', level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Scenarios/, level: 1 })).toBeInTheDocument();
     });
     const before = scenarioCount();
 
@@ -108,7 +108,7 @@ describe('Scenarios page (M4a)', () => {
     const user = userEvent.setup();
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Scenarios', level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Scenarios/, level: 1 })).toBeInTheDocument();
     });
 
     // The name in the table is a button with title="Click to rename"
@@ -137,7 +137,7 @@ describe('Scenarios page (M4a)', () => {
     const user = userEvent.setup();
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Scenarios', level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Scenarios/, level: 1 })).toBeInTheDocument();
     });
 
     const nameButtons = screen.getAllByTitle('Click to rename');
@@ -162,7 +162,7 @@ describe('Scenarios page (M4a)', () => {
     const user = userEvent.setup();
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Scenarios', level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Scenarios/, level: 1 })).toBeInTheDocument();
     });
 
     // The non-base scenario row has a "Set X as base scenario" button
@@ -186,7 +186,7 @@ describe('Scenarios page (M4a)', () => {
   it('cannot delete the base scenario (no Delete button rendered for it)', async () => {
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Scenarios', level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Scenarios/, level: 1 })).toBeInTheDocument();
     });
     // No "Delete Base Case" button (base is protected)
     expect(
@@ -198,7 +198,7 @@ describe('Scenarios page (M4a)', () => {
     const user = userEvent.setup();
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Scenarios', level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Scenarios/, level: 1 })).toBeInTheDocument();
     });
 
     // Clone first so we have a deletable extra scenario
@@ -226,7 +226,7 @@ describe('Scenarios page (M4a)', () => {
     const user = userEvent.setup();
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Scenarios', level: 1 })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Scenarios/, level: 1 })).toBeInTheDocument();
     });
 
     // Clone, then set the clone as active via setActiveScenario

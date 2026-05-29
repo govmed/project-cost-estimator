@@ -1,27 +1,29 @@
 /**
- * ScenariosPage - M4a.
+ * ScenariosPage - M4b.
  *
- * Simple list of all scenarios with inline actions. Each row shows:
- *  - Inline-renameable scenario name
- *  - Base / Active badges
- *  - Final Price, Margin, Hours (from engine, computed per scenario)
- *  - R / C / O line item counts
- *  - Set-as-base star (★)
- *  - Clone (⎘)
- *  - Delete (✕, two-click confirm; hidden on base scenario)
+ * Builds on M4a's CRUD page by adding:
+ *  - A checkbox column for picking 2-4 scenarios to compare
+ *  - A Compare grid below the list, side-by-side cards
+ *  - Delta computation vs the first selected scenario (the "baseline")
  *
- * No compare grid here — that's M4b. M4a's job is to ship CRUD cleanly.
+ * Selection state is local to this page. Closing/reopening the page resets it.
+ *
+ * Note: the page title returns to "Scenarios & Compare" now that Compare is here.
+ * M4a used "Scenarios" because Compare wasn't yet wired.
  */
 
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import clsx from 'clsx';
 import { useProjectStore } from '@/data/store';
-import { calculate } from '@/engine/calculate';
+import { useAllScenarioTotals } from '@/hooks/useAllScenarioTotals';
 import { formatMoney, formatPercent } from '@/ui/format';
 import type { Scenario } from '@/types/scenario';
 import type { ScenarioId } from '@/types/ids';
 import type { ScenarioTotals } from '@/engine/types';
+import { ScenarioCompareCard } from '@/ui/components/scenarios/ScenarioCompareCard';
+
+const MAX_COMPARE = 4;
 
 export function ScenariosPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -30,59 +32,86 @@ export function ScenariosPage() {
   const activeScenarioId = useProjectStore((s) => s.activeScenarioId);
   const setActiveScenario = useProjectStore((s) => s.setActiveScenario);
   const cloneScenario = useProjectStore((s) => s.cloneScenario);
+  const allTotals = useAllScenarioTotals();
 
-  // Pre-compute totals for every scenario. ScenariosPage is the first
-  // screen that needs cross-scenario totals; M4b will lift this into a
-  // shared hook.
-  const allTotals = useMemo(() => {
-    const map = new Map<ScenarioId, ScenarioTotals>();
-    if (!project) return map;
-    for (const sc of scenarios) {
-      try {
-        map.set(sc.id, calculate(project, sc));
-      } catch {
-        // Skip scenarios that fail to calculate (shouldn't happen with valid data)
-      }
-    }
-    return map;
-  }, [project, scenarios]);
+  // Selected for compare; order matters (first = baseline).
+  const [selected, setSelected] = useState<ScenarioId[]>([]);
 
   const sortedScenarios = useMemo(
     () => [...scenarios].sort((a, b) => a.order - b.order),
     [scenarios],
   );
 
+  function toggleSelect(id: ScenarioId) {
+    setSelected((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      if (prev.length >= MAX_COMPARE) return prev;
+      return [...prev, id];
+    });
+  }
+
+  function clearSelection() {
+    setSelected([]);
+  }
+
   if (!project) {
     return <div className="px-8 py-12 text-muted-fg">No project loaded.</div>;
   }
 
+  // Build the compare-grid list in click order (first is baseline).
+  // Filter out any IDs that no longer exist (in case a selected
+  // scenario was deleted).
+  const selectedScenarios = selected
+    .map((id) => sortedScenarios.find((s) => s.id === id))
+    .filter((s): s is Scenario => !!s);
+
+  const baselineTotals = selectedScenarios[0]
+    ? allTotals.get(selectedScenarios[0].id) ?? null
+    : null;
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-6">
+      {/* Header */}
       <div className="mb-4 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Scenarios</h1>
+          <h1 className="text-2xl font-semibold">Scenarios &amp; Compare</h1>
           <p className="text-sm text-muted-fg">
             {scenarios.length} scenario{scenarios.length === 1 ? '' : 's'} in this project.
-            Clone, rename, delete, or set a different base. Side-by-side comparison lands
-            in M4b.
+            Tick 2-4 to compare side-by-side. The first selected is the baseline; others
+            show deltas relative to it.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            const fromId = activeScenarioId ?? project.baseScenarioId;
-            cloneScenario(fromId);
-          }}
-          className="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg hover:bg-accent/90"
-        >
-          + Clone active scenario
-        </button>
+        <div className="flex items-center gap-2">
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
+            >
+              Clear selection
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              const fromId = activeScenarioId ?? project.baseScenarioId;
+              cloneScenario(fromId);
+            }}
+            className="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-fg hover:bg-accent/90"
+          >
+            + Clone active scenario
+          </button>
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-background">
+      {/* Scenarios table */}
+      <div className="mb-6 overflow-hidden rounded-lg border border-border bg-background">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-muted/30 text-xs font-medium uppercase tracking-wide text-muted-fg">
             <tr>
+              <th className="px-3 py-2 text-left w-12">
+                <span className="sr-only">Select for compare</span>
+              </th>
               <th className="px-3 py-2 text-left">Scenario</th>
               <th className="px-3 py-2 text-right">Final Price</th>
               <th className="px-3 py-2 text-right">Margin</th>
@@ -101,9 +130,11 @@ export function ScenariosPage() {
                 totals={allTotals.get(sc.id) ?? null}
                 isActive={sc.id === activeScenarioId}
                 projectId={projectId ?? project.id}
-                onView={(id) => {
-                  setActiveScenario(id);
-                }}
+                isSelected={selected.includes(sc.id)}
+                selectionIndex={selected.indexOf(sc.id)}
+                canSelect={selected.includes(sc.id) || selected.length < MAX_COMPARE}
+                onToggleSelect={toggleSelect}
+                onView={(id) => setActiveScenario(id)}
               />
             ))}
           </tbody>
@@ -112,6 +143,43 @@ export function ScenariosPage() {
           R / C / O = Resources / Cloud line items / Other-cost line items.
         </div>
       </div>
+
+      {/* Compare grid */}
+      <section aria-label="Compare scenarios">
+        <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted-fg">
+          Compare ({selected.length} of {MAX_COMPARE} max)
+        </h2>
+        {selectedScenarios.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border bg-muted/10 p-8 text-center text-sm text-muted-fg">
+            Tick scenarios above to compare them side-by-side. The first one selected
+            becomes the baseline; the others show deltas relative to it.
+          </div>
+        ) : selectedScenarios.length === 1 ? (
+          <div className="rounded-lg border border-dashed border-border bg-muted/10 p-6 text-center text-sm text-muted-fg">
+            One scenario selected. Tick one more to see deltas side-by-side.
+          </div>
+        ) : (
+          <div
+            className={clsx(
+              'grid gap-4',
+              selectedScenarios.length === 2 && 'lg:grid-cols-2',
+              selectedScenarios.length === 3 && 'lg:grid-cols-3',
+              selectedScenarios.length === 4 && 'lg:grid-cols-2 xl:grid-cols-4',
+            )}
+          >
+            {selectedScenarios.map((sc, idx) => (
+              <ScenarioCompareCard
+                key={sc.id}
+                scenario={sc}
+                totals={allTotals.get(sc.id) ?? null}
+                baseline={baselineTotals}
+                isPrimary={idx === 0}
+                projectId={projectId ?? project.id}
+              />
+            ))}
+          </div>
+        )}
+      </section>
 
       <p className="mt-4 text-xs text-muted-fg">
         Every scenario action (clone, rename, delete, set-base) creates an audit entry
@@ -126,10 +194,24 @@ interface ScenarioRowProps {
   totals: ScenarioTotals | null;
   isActive: boolean;
   projectId: string;
+  isSelected: boolean;
+  selectionIndex: number; // -1 if not selected
+  canSelect: boolean;
+  onToggleSelect: (id: ScenarioId) => void;
   onView: (id: ScenarioId) => void;
 }
 
-function ScenarioRow({ scenario, totals, isActive, projectId, onView }: ScenarioRowProps) {
+function ScenarioRow({
+  scenario,
+  totals,
+  isActive,
+  projectId,
+  isSelected,
+  selectionIndex,
+  canSelect,
+  onToggleSelect,
+  onView,
+}: ScenarioRowProps) {
   const navigate = useNavigate();
   const renameScenario = useProjectStore((s) => s.renameScenario);
   const cloneScenario = useProjectStore((s) => s.cloneScenario);
@@ -154,6 +236,23 @@ function ScenarioRow({ scenario, totals, isActive, projectId, onView }: Scenario
 
   return (
     <tr className="border-b border-border/60 last:border-b-0 hover:bg-muted/20">
+      <td className="px-3 py-2">
+        <label className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            disabled={!canSelect}
+            onChange={() => onToggleSelect(scenario.id)}
+            aria-label={`Select ${scenario.name} for compare`}
+            className="h-4 w-4 rounded border-border"
+          />
+          {selectionIndex >= 0 && (
+            <span className="text-[10px] font-semibold text-accent">
+              {selectionIndex === 0 ? 'BASE' : `+${selectionIndex}`}
+            </span>
+          )}
+        </label>
+      </td>
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           {editingName ? (
