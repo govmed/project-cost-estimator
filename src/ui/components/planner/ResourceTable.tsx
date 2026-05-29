@@ -1,16 +1,9 @@
 /**
  * ResourceTable - dense editable table at the heart of the Resource Planner.
  *
- * M2b additions on top of M2a:
- *  - Phase % cells are click-to-edit (EditableNumericCell)
- *  - Click anywhere on a row's identity cell to expand it (chevron + form below)
- *  - Expanded row shows ResourceRowExpanded with editable rates / hours / etc.
- *
- * Edits commit on Enter/Tab/blur and immediately recompute via the engine.
- * The store handles persistence and audit logging.
- *
- * Built with TanStack Table for the headless flexibility. M2c will use the
- * same setup to add filter chips and sort headers.
+ * M2c additions on top of M2b:
+ *  - Trailing Actions column with Duplicate + Delete buttons
+ *  - Empty state row when filters return no resources
  */
 
 import { useState, Fragment } from 'react';
@@ -29,6 +22,7 @@ import type { ResourceRow } from './build-rows';
 import { phaseShortLabel } from './phase-labels';
 import { EditableNumericCell } from './EditableNumericCell';
 import { ResourceRowExpanded } from './ResourceRowExpanded';
+import { RowActions } from './RowActions';
 
 const columnHelper = createColumnHelper<ResourceRow>();
 
@@ -42,10 +36,20 @@ export interface ResourceTableProps {
     cost: number;
     marginPct: number;
   };
+  /** Total rows in the scenario before filtering, for empty-state messaging. */
+  unfilteredCount: number;
 }
 
-export function ResourceTable({ rows, phases, scenarioId, totalsFooter }: ResourceTableProps) {
+export function ResourceTable({
+  rows,
+  phases,
+  scenarioId,
+  totalsFooter,
+  unfilteredCount,
+}: ResourceTableProps) {
   const updateResourceAllocation = useProjectStore((s) => s.updateResourceAllocation);
+  const deleteResource = useProjectStore((s) => s.deleteResource);
+  const duplicateResource = useProjectStore((s) => s.duplicateResource);
   const [expandedIds, setExpandedIds] = useState<Set<ResourceId>>(new Set());
 
   function toggleExpand(id: ResourceId) {
@@ -72,12 +76,7 @@ export function ResourceTable({ rows, phases, scenarioId, totalsFooter }: Resour
             aria-expanded={isOpen}
             aria-label={`${isOpen ? 'Collapse' : 'Expand'} details for ${r.role}`}
           >
-            <span
-              className={clsx(
-                'w-3 text-muted-fg transition-transform',
-                isOpen && 'rotate-90',
-              )}
-            >
+            <span className={clsx('w-3 text-muted-fg transition-transform', isOpen && 'rotate-90')}>
               ▸
             </span>
             <div className="flex flex-col leading-tight">
@@ -167,6 +166,22 @@ export function ResourceTable({ rows, phases, scenarioId, totalsFooter }: Resour
         );
       },
     }),
+
+    // Actions column (M2c)
+    columnHelper.display({
+      id: 'actions',
+      header: () => <span className="sr-only">Actions</span>,
+      cell: (info) => {
+        const r = info.row.original.resource;
+        return (
+          <RowActions
+            rowLabel={r.role}
+            onDuplicate={() => duplicateResource(scenarioId, r.id)}
+            onDelete={() => deleteResource(scenarioId, r.id)}
+          />
+        );
+      },
+    }),
   ];
 
   const table = useReactTable({
@@ -175,14 +190,11 @@ export function ResourceTable({ rows, phases, scenarioId, totalsFooter }: Resour
     getCoreRowModel: getCoreRowModel(),
   });
 
-  // We want the expanded form row to span all columns underneath the matching
-  // resource row. TanStack doesn't have first-class support for sub-rows
-  // without configuration; doing it manually here is simpler and clear.
   const colCount = columns.length;
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-background">
-      <table className="w-full min-w-[900px] text-sm">
+      <table className="w-full min-w-[1000px] text-sm">
         <thead className="border-b border-border bg-muted/30 text-xs font-medium uppercase tracking-wide text-muted-fg">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
@@ -193,6 +205,7 @@ export function ResourceTable({ rows, phases, scenarioId, totalsFooter }: Resour
                     'px-3 py-2 text-left',
                     header.id.startsWith('phase-') && 'w-14',
                     header.id === 'identity' && 'min-w-[16rem]',
+                    header.id === 'actions' && 'w-20',
                   )}
                 >
                   {flexRender(header.column.columnDef.header, header.getContext())}
@@ -202,6 +215,15 @@ export function ResourceTable({ rows, phases, scenarioId, totalsFooter }: Resour
           ))}
         </thead>
         <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={colCount} className="px-6 py-10 text-center text-sm text-muted-fg">
+                {unfilteredCount === 0
+                  ? 'No resources yet. Click "+ Add resource" to start staffing.'
+                  : 'No resources match the current filters.'}
+              </td>
+            </tr>
+          )}
           {table.getRowModel().rows.map((row) => {
             const resource = row.original.resource;
             const isExpanded = expandedIds.has(resource.id);
@@ -230,28 +252,34 @@ export function ResourceTable({ rows, phases, scenarioId, totalsFooter }: Resour
             );
           })}
         </tbody>
-        <tfoot className="border-t-2 border-border bg-muted/40 font-medium">
-          <tr>
-            <td className="px-3 py-2.5 text-xs uppercase tracking-wide text-muted-fg">
-              Totals ({rows.length} {rows.length === 1 ? 'resource' : 'resources'})
-            </td>
-            {phases.map((p) => (
-              <td key={p.id} />
-            ))}
-            <td className="px-3 py-2.5 text-right font-mono text-sm tabular-nums">
-              {Math.round(totalsFooter.hours).toLocaleString()}
-            </td>
-            <td className="px-3 py-2.5 text-right font-mono text-sm tabular-money">
-              {formatMoney(totalsFooter.billed)}
-            </td>
-            <td className="px-3 py-2.5 text-right font-mono text-sm tabular-money text-muted-fg">
-              {formatMoney(totalsFooter.cost)}
-            </td>
-            <td className="px-3 py-2.5 text-right font-mono text-sm tabular-nums">
-              {formatPercent(totalsFooter.marginPct)}
-            </td>
-          </tr>
-        </tfoot>
+        {rows.length > 0 && (
+          <tfoot className="border-t-2 border-border bg-muted/40 font-medium">
+            <tr>
+              <td className="px-3 py-2.5 text-xs uppercase tracking-wide text-muted-fg">
+                Totals ({rows.length} {rows.length === 1 ? 'resource' : 'resources'})
+                {unfilteredCount !== rows.length && (
+                  <span className="ml-1 text-muted-fg/70"> of {unfilteredCount}</span>
+                )}
+              </td>
+              {phases.map((p) => (
+                <td key={p.id} />
+              ))}
+              <td className="px-3 py-2.5 text-right font-mono text-sm tabular-nums">
+                {Math.round(totalsFooter.hours).toLocaleString()}
+              </td>
+              <td className="px-3 py-2.5 text-right font-mono text-sm tabular-money">
+                {formatMoney(totalsFooter.billed)}
+              </td>
+              <td className="px-3 py-2.5 text-right font-mono text-sm tabular-money text-muted-fg">
+                {formatMoney(totalsFooter.cost)}
+              </td>
+              <td className="px-3 py-2.5 text-right font-mono text-sm tabular-nums">
+                {formatPercent(totalsFooter.marginPct)}
+              </td>
+              <td />
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );

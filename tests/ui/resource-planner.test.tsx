@@ -74,10 +74,13 @@ describe('Resource Planner (M2a)', () => {
     await waitFor(() => {
       expect(screen.getByText('Geography Mix')).toBeInTheDocument();
     });
-    // Region labels appear in the legend
-    expect(screen.getByText('US-Onshore')).toBeInTheDocument();
-    expect(screen.getByText('LATAM-Nearshore')).toBeInTheDocument();
-    expect(screen.getByText('India-Offshore')).toBeInTheDocument();
+    // Region labels appear in the legend inside the Geography Mix card.
+    // M2c adds filter chips with the same labels above the table, so we
+    // scope our assertions to the card itself.
+    const card = screen.getByText('Geography Mix').closest('div')!;
+    expect(within(card).getByText('US-Onshore')).toBeInTheDocument();
+    expect(within(card).getByText('LATAM-Nearshore')).toBeInTheDocument();
+    expect(within(card).getByText('India-Offshore')).toBeInTheDocument();
   });
 
   it('shows phase abbreviations in column headers', async () => {
@@ -138,11 +141,11 @@ describe('Resource Planner (M2a)', () => {
     expect(screen.getByRole('columnheader', { name: 'M%' })).toBeInTheDocument();
   });
 
-  it('disables the (not yet wired) Add Resource button', async () => {
+  it('Add Resource button is now wired (M2c)', async () => {
     render(<App />);
     await waitFor(() => {
       const btn = screen.getByRole('button', { name: /Add resource/i });
-      expect(btn).toBeDisabled();
+      expect(btn).not.toBeDisabled();
     });
   });
 
