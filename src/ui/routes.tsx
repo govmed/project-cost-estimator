@@ -19,6 +19,8 @@ import { OtherCostsPlannerPage } from '@/ui/pages/OtherCostsPlannerPage';
 import { ProjectSetupPage } from '@/ui/pages/ProjectSetupPage';
 import { ScenariosPage } from '@/ui/pages/ScenariosPage';
 import { MAModePage } from '@/ui/pages/MAModePage';
+import { AssumptionLedgerPage } from '@/ui/pages/AssumptionLedgerPage';
+import { AuditLogPage } from '@/ui/pages/AuditLogPage';
 import { PageStub } from '@/ui/pages/PageStub';
 
 // Lazy-load the Dashboard so Recharts ships in its own chunk and isn't
@@ -55,16 +57,7 @@ export function AppRoutes() {
         <Route path="other-costs" element={<OtherCostsPlannerPage />} />
         <Route path="ma-mode" element={<MAModePage />} />
         <Route path="scenarios" element={<ScenariosPage />} />
-        <Route
-          path="assumptions"
-          element={
-            <PageStub
-              title="Assumption Ledger"
-              purpose="Every assumption with risk, source, and linked entities."
-              milestone="M5"
-            />
-          }
-        />
+        <Route path="assumptions" element={<AssumptionLedgerPage />} />
         <Route
           path="export"
           element={
@@ -75,16 +68,7 @@ export function AppRoutes() {
             />
           }
         />
-        <Route
-          path="audit"
-          element={
-            <PageStub
-              title="Audit Log"
-              purpose="Change history, filterable, with before/after diffs."
-              milestone="M5"
-            />
-          }
-        />
+        <Route path="audit" element={<AuditLogPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

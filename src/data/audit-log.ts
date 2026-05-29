@@ -57,7 +57,12 @@ export type AuditAction =
   | { kind: 'scenario.setBase'; oldBaseScenarioId: ScenarioId; newBaseScenarioId: ScenarioId }
   // M&A overlay (M4d)
   | { kind: 'scenario.maData.set'; scenarioId: ScenarioId; mode: 'TSA' | 'CarveOut' | 'Integration'; data: unknown }
-  | { kind: 'scenario.maData.clear'; scenarioId: ScenarioId; oldData: unknown };
+  | { kind: 'scenario.maData.clear'; scenarioId: ScenarioId; oldData: unknown }
+  // Assumptions (M5a)
+  | { kind: 'assumption.add'; assumptionId: string; assumption: unknown }
+  | { kind: 'assumption.update'; assumptionId: string; field: string; oldValue: unknown; newValue: unknown }
+  | { kind: 'assumption.delete'; assumptionId: string; assumption: unknown }
+  | { kind: 'assumption.review'; assumptionId: string; reviewedAt: string };
 
 export interface AuditEntry {
   id: string;

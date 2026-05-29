@@ -44,6 +44,12 @@ import { OtherCostLineItemId as makeOtherCostLineItemId } from '@/types/ids';
 import { PhaseId as makePhaseId } from '@/types/ids';
 import { ScenarioId as makeScenarioId } from '@/types/ids';
 import { AssumptionId as makeAssumptionId } from '@/types/ids';
+import type {
+  Assumption,
+  AssumptionSource,
+  AssumptionRiskLevel,
+  LinkedEntity,
+} from '@/types/assumption';
 import { LocalStorageProvider } from './local-storage-provider';
 import type { Storage } from './storage';
 import { appendAudit } from './audit-log';
@@ -217,7 +223,33 @@ interface ProjectState {
   // M&A overlay (M4d). Replaces the scenario's maData wholesale.
   // Pass null to clear.
   updateMAData(scenarioId: ScenarioId, maData: MAModeData | null): void;
+
+  // Assumption ledger (M5a)
+  addAssumption(scenarioId: ScenarioId, input: NewAssumptionInput): string | null;
+  updateAssumption(
+    scenarioId: ScenarioId,
+    assumptionId: string,
+    field: AssumptionField,
+  ): void;
+  deleteAssumption(scenarioId: ScenarioId, assumptionId: string): void;
+  markAssumptionReviewed(scenarioId: ScenarioId, assumptionId: string): void;
 }
+
+export interface NewAssumptionInput {
+  topic: string;
+  description: string;
+  source: AssumptionSource;
+  riskLevel: AssumptionRiskLevel;
+  linkedEntities?: LinkedEntity[];
+  evidenceUrl?: string;
+}
+
+export type AssumptionField =
+  | { kind: 'topic'; value: string }
+  | { kind: 'description'; value: string }
+  | { kind: 'source'; value: AssumptionSource }
+  | { kind: 'riskLevel'; value: AssumptionRiskLevel }
+  | { kind: 'evidenceUrl'; value: string };
 
 function clampAllocation(v: number): number {
   if (!Number.isFinite(v)) return 0;
@@ -1462,6 +1494,173 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         oldData,
       });
     }
+  },
+
+  // -----------------------------------------------------------------
+  // Assumption ledger (M5a)
+  // -----------------------------------------------------------------
+
+  addAssumption(scenarioId, input) {
+    const state = get();
+    if (!state.project) return null;
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return null;
+
+    const newId = genAssumptionId();
+    const now = nowIso();
+    const newAssumption: Assumption = {
+      id: newId,
+      scenarioId,
+      topic: input.topic.trim() || 'Untitled assumption',
+      description: input.description,
+      source: input.source,
+      riskLevel: input.riskLevel,
+      linkedEntities: input.linkedEntities ?? [],
+      evidenceUrl: input.evidenceUrl,
+      createdBy: state.project.ownerId,
+      createdAt: now,
+    };
+
+    const updatedScenario: Scenario = {
+      ...scenario,
+      assumptions: [...scenario.assumptions, newAssumption],
+      updatedAt: now,
+    };
+    const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
+    const nextProject = bumpProject(state.project);
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'assumption.add',
+      assumptionId: newId,
+      assumption: newAssumption,
+    });
+    return newId;
+  },
+
+  updateAssumption(scenarioId, assumptionId, field) {
+    const state = get();
+    if (!state.project) return;
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+    const assumption = scenario.assumptions.find((a) => a.id === assumptionId);
+    if (!assumption) return;
+
+    let updated: Assumption | null = null;
+    let oldValue: unknown = null;
+    const newValue = field.value;
+
+    switch (field.kind) {
+      case 'topic': {
+        const trimmed = field.value.trim();
+        if (!trimmed || trimmed === assumption.topic) return;
+        oldValue = assumption.topic;
+        updated = { ...assumption, topic: trimmed };
+        break;
+      }
+      case 'description': {
+        if (field.value === assumption.description) return;
+        oldValue = assumption.description;
+        updated = { ...assumption, description: field.value };
+        break;
+      }
+      case 'source': {
+        if (field.value === assumption.source) return;
+        oldValue = assumption.source;
+        updated = { ...assumption, source: field.value };
+        break;
+      }
+      case 'riskLevel': {
+        if (field.value === assumption.riskLevel) return;
+        oldValue = assumption.riskLevel;
+        updated = { ...assumption, riskLevel: field.value };
+        break;
+      }
+      case 'evidenceUrl': {
+        const cur = assumption.evidenceUrl ?? '';
+        if (cur === field.value) return;
+        oldValue = cur;
+        updated = { ...assumption, evidenceUrl: field.value || undefined };
+        break;
+      }
+    }
+    if (!updated) return;
+
+    const updatedScenario: Scenario = {
+      ...scenario,
+      assumptions: scenario.assumptions.map((a) =>
+        a.id === assumptionId ? updated! : a,
+      ),
+      updatedAt: nowIso(),
+    };
+    const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
+    const nextProject = bumpProject(state.project);
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'assumption.update',
+      assumptionId,
+      field: field.kind,
+      oldValue,
+      newValue,
+    });
+  },
+
+  deleteAssumption(scenarioId, assumptionId) {
+    const state = get();
+    if (!state.project) return;
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+    const idx = scenario.assumptions.findIndex((a) => a.id === assumptionId);
+    if (idx === -1) return;
+    const removed = scenario.assumptions[idx];
+
+    const updatedScenario: Scenario = {
+      ...scenario,
+      assumptions: scenario.assumptions.filter((a) => a.id !== assumptionId),
+      updatedAt: nowIso(),
+    };
+    const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
+    const nextProject = bumpProject(state.project);
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'assumption.delete',
+      assumptionId,
+      assumption: removed,
+    });
+  },
+
+  markAssumptionReviewed(scenarioId, assumptionId) {
+    const state = get();
+    if (!state.project) return;
+    const scenario = state.scenarios.find((s) => s.id === scenarioId);
+    if (!scenario) return;
+    const assumption = scenario.assumptions.find((a) => a.id === assumptionId);
+    if (!assumption) return;
+
+    const reviewedAt = nowIso();
+    const updated: Assumption = {
+      ...assumption,
+      lastReviewedAt: reviewedAt,
+      reviewedBy: state.project.ownerId,
+    };
+    const updatedScenario: Scenario = {
+      ...scenario,
+      assumptions: scenario.assumptions.map((a) =>
+        a.id === assumptionId ? updated : a,
+      ),
+      updatedAt: reviewedAt,
+    };
+    const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
+    const nextProject = bumpProject(state.project);
+    set({ project: nextProject, scenarios: nextScenarios });
+    void storage.save(nextProject);
+    appendAudit(nextProject.id, scenarioId, {
+      kind: 'assumption.review',
+      assumptionId,
+      reviewedAt,
+    });
   },
 }));
 
