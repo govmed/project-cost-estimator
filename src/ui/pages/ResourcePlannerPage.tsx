@@ -1,14 +1,17 @@
 /**
- * ResourcePlannerPage - M2a.
+ * ResourcePlannerPage - M2b.
  *
- * Read-only assembly:
- *   - Header with title + resource count
- *   - Main resource table (per-row totals, phase allocations, footer)
- *   - Geography mix card
+ * Read-only became editable: phase % cells edit inline, expand a row to
+ * edit name / rates / hours / utilization. Every edit:
+ *  - Updates the store immutably
+ *  - Bumps Project.updatedAt
+ *  - Writes an audit entry (queued; M5 will render the Audit Log screen)
+ *  - Triggers a re-render that flows through useScenarioTotals,
+ *    updating per-row totals, the footer, the top-rail KPIs, and
+ *    the geography mix card
  *
- * No editing in M2a. The "+ Add resource", filters, search, group-by,
- * guardrails, and right-rail defensibility panel land in later
- * sub-milestones.
+ * M2c will add: + Add resource flow, delete/duplicate, filter chips,
+ * search, guardrails strip.
  */
 
 import { useMemo } from 'react';
@@ -34,15 +37,6 @@ export function ResourcePlannerPage() {
     return buildResourceRows(activeScenario.resources, project.phases, totals.resources);
   }, [project, activeScenario, totals]);
 
-  if (!project || !activeScenario || !totals) {
-    return (
-      <div className="px-8 py-12 text-muted-fg">
-        No active scenario.
-      </div>
-    );
-  }
-
-  // Footer totals: sum across visible rows.
   const totalsFooter = useMemo(() => {
     const hours = rows.reduce((acc, r) => acc + r.totals.totalHours, 0);
     const billed = rows.reduce((acc, r) => acc + r.totals.billedAmount.amount, 0);
@@ -51,9 +45,12 @@ export function ResourcePlannerPage() {
     return { hours, billed, cost, marginPct };
   }, [rows]);
 
+  if (!project || !activeScenario || !totals) {
+    return <div className="px-8 py-12 text-muted-fg">No active scenario.</div>;
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-6 py-6">
-      {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Resource Planner</h1>
@@ -67,30 +64,44 @@ export function ResourcePlannerPage() {
             type="button"
             disabled
             className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-fg opacity-60"
-            title="Add resource - inline edit lands in M2b, add flow in M2c"
+            title="Add resource - lands in M2c"
           >
             + Add resource
           </button>
         </div>
       </div>
 
-      {/* Main table */}
-      <ResourceTable rows={rows} phases={project.phases} totalsFooter={totalsFooter} />
+      <div className="mb-3 rounded-md border border-accent/30 bg-accent/5 px-3 py-2 text-xs text-muted-fg">
+        <span className="font-medium text-foreground">Editing is live.</span> Click any phase
+        % cell to edit; click a row to expand and edit rates, hours, utilization, or notes.
+        Press Enter or Tab to commit, Esc to cancel. KPIs update in real time.
+      </div>
 
-      {/* Bottom cards */}
+      <ResourceTable
+        rows={rows}
+        phases={project.phases}
+        scenarioId={activeScenario.id}
+        totalsFooter={totalsFooter}
+      />
+
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <GeographyMixBar byGeography={totals.byGeography} />
         <div className="rounded-lg border border-border bg-background p-4">
           <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-fg">
-            Coming next (M2b / M2c)
+            Coming next (M2c)
           </h3>
           <ul className="space-y-1.5 text-sm text-muted-fg">
-            <li>• <span className="text-foreground">M2b:</span> click any phase % cell to edit inline; rates/utilization editable in expanded row</li>
-            <li>• <span className="text-foreground">M2c:</span> add/delete/duplicate, filter by geo/phase/level, search, guardrails strip</li>
-            <li>• <span className="text-foreground">M1c (deferred):</span> right-rail defensibility panel when you click any number</li>
+            <li>• <span className="text-foreground">Add resource</span> — role × level × geo picker with rate card lookup</li>
+            <li>• <span className="text-foreground">Delete / duplicate</span> rows</li>
+            <li>• <span className="text-foreground">Filter chips</span> (Geo / Phase / Level), search box, group-by</li>
+            <li>• <span className="text-foreground">Guardrails strip</span> with three configurable rules</li>
           </ul>
         </div>
       </div>
+
+      <p className="mt-4 text-xs text-muted-fg">
+        Every edit creates an audit entry in <span className="font-mono">sow-calc:audit:{project.id}</span>. The Audit Log screen lands in M5.
+      </p>
     </div>
   );
 }

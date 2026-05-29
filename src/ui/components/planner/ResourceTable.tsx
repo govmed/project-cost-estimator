@@ -1,19 +1,19 @@
 /**
- * ResourceTable - the dense table at the heart of the Resource Planner.
+ * ResourceTable - dense editable table at the heart of the Resource Planner.
  *
- * Columns (read-only in M2a; inline editing lands in M2b):
- *   - Role / Level / Geo (combined cell, 2 lines)
- *   - One column per phase showing allocation %
- *   - Hours (total across all phases)
- *   - Bill (billed amount)
- *   - Cost (internal cost)
- *   - Margin %
+ * M2b additions on top of M2a:
+ *  - Phase % cells are click-to-edit (EditableNumericCell)
+ *  - Click anywhere on a row's identity cell to expand it (chevron + form below)
+ *  - Expanded row shows ResourceRowExpanded with editable rates / hours / etc.
  *
- * Built with TanStack Table for the headless flexibility we'll need in
- * M2b (cell editing, keyboard nav). M2a uses only the most basic features:
- * column definitions, useReactTable, flexRender.
+ * Edits commit on Enter/Tab/blur and immediately recompute via the engine.
+ * The store handles persistence and audit logging.
+ *
+ * Built with TanStack Table for the headless flexibility. M2c will use the
+ * same setup to add filter chips and sort headers.
  */
 
+import { useState, Fragment } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -22,16 +22,20 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import type { Phase } from '@/types/project';
+import type { ResourceId, ScenarioId, PhaseId } from '@/types/ids';
 import { formatMoney, formatPercent } from '@/ui/format';
+import { useProjectStore } from '@/data/store';
 import type { ResourceRow } from './build-rows';
 import { phaseShortLabel } from './phase-labels';
+import { EditableNumericCell } from './EditableNumericCell';
+import { ResourceRowExpanded } from './ResourceRowExpanded';
 
 const columnHelper = createColumnHelper<ResourceRow>();
 
 export interface ResourceTableProps {
   rows: ResourceRow[];
   phases: Phase[];
-  /** Subtotals shown in the footer row. */
+  scenarioId: ScenarioId;
   totalsFooter: {
     hours: number;
     billed: number;
@@ -40,27 +44,54 @@ export interface ResourceTableProps {
   };
 }
 
-export function ResourceTable({ rows, phases, totalsFooter }: ResourceTableProps) {
-  // Build columns dynamically because phase columns depend on the project.
+export function ResourceTable({ rows, phases, scenarioId, totalsFooter }: ResourceTableProps) {
+  const updateResourceAllocation = useProjectStore((s) => s.updateResourceAllocation);
+  const [expandedIds, setExpandedIds] = useState<Set<ResourceId>>(new Set());
+
+  function toggleExpand(id: ResourceId) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   const columns = [
     columnHelper.accessor((row) => row.resource, {
       id: 'identity',
       header: 'Role / Level / Geo',
       cell: (info) => {
         const r = info.getValue();
+        const isOpen = expandedIds.has(r.id);
         return (
-          <div className="flex flex-col leading-tight">
-            <span className="font-medium text-foreground">{r.role}</span>
-            <span className="text-xs text-muted-fg">
-              {r.skillLevel} · {r.geography}
-              {r.name && r.name !== 'TBD' ? ` · ${r.name}` : ''}
+          <button
+            type="button"
+            onClick={() => toggleExpand(r.id)}
+            className="flex w-full items-center gap-2 rounded text-left hover:bg-transparent"
+            aria-expanded={isOpen}
+            aria-label={`${isOpen ? 'Collapse' : 'Expand'} details for ${r.role}`}
+          >
+            <span
+              className={clsx(
+                'w-3 text-muted-fg transition-transform',
+                isOpen && 'rotate-90',
+              )}
+            >
+              ▸
             </span>
-          </div>
+            <div className="flex flex-col leading-tight">
+              <span className="font-medium text-foreground">{r.role}</span>
+              <span className="text-xs text-muted-fg">
+                {r.skillLevel} · {r.geography}
+                {r.name && r.name !== 'TBD' ? ` · ${r.name}` : ''}
+              </span>
+            </div>
+          </button>
         );
       },
     }),
 
-    // One column per phase
     ...phases.map((phase) =>
       columnHelper.accessor((row) => row.allocationByPhase[phase.id] ?? 0, {
         id: `phase-${phase.id}`,
@@ -70,15 +101,22 @@ export function ResourceTable({ rows, phases, totalsFooter }: ResourceTableProps
           </div>
         ),
         cell: (info) => {
-          const v = info.getValue();
+          const value = info.getValue();
+          const resource = info.row.original.resource;
           return (
-            <div
-              className={clsx(
-                'text-center font-mono text-sm tabular-nums',
-                v === 0 ? 'text-muted-fg/40' : 'text-foreground',
-              )}
-            >
-              {v}
+            <div className="flex justify-center">
+              <EditableNumericCell
+                value={value}
+                onCommit={(newPct) =>
+                  updateResourceAllocation(
+                    scenarioId,
+                    resource.id,
+                    phase.id as PhaseId,
+                    newPct,
+                  )
+                }
+                label={`${resource.role} ${phase.name} allocation`}
+              />
             </div>
           );
         },
@@ -121,11 +159,7 @@ export function ResourceTable({ rows, phases, totalsFooter }: ResourceTableProps
       cell: (info) => {
         const v = info.getValue();
         const color =
-          v < 0
-            ? 'text-status-bad'
-            : v < 15
-              ? 'text-status-warn'
-              : 'text-status-good';
+          v < 0 ? 'text-status-bad' : v < 15 ? 'text-status-warn' : 'text-status-good';
         return (
           <div className={clsx('text-right font-mono text-sm tabular-nums', color)}>
             {formatPercent(v)}
@@ -141,6 +175,11 @@ export function ResourceTable({ rows, phases, totalsFooter }: ResourceTableProps
     getCoreRowModel: getCoreRowModel(),
   });
 
+  // We want the expanded form row to span all columns underneath the matching
+  // resource row. TanStack doesn't have first-class support for sub-rows
+  // without configuration; doing it manually here is simpler and clear.
+  const colCount = columns.length;
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-background">
       <table className="w-full min-w-[900px] text-sm">
@@ -153,7 +192,7 @@ export function ResourceTable({ rows, phases, totalsFooter }: ResourceTableProps
                   className={clsx(
                     'px-3 py-2 text-left',
                     header.id.startsWith('phase-') && 'w-14',
-                    header.id === 'identity' && 'min-w-[14rem]',
+                    header.id === 'identity' && 'min-w-[16rem]',
                   )}
                 >
                   {flexRender(header.column.columnDef.header, header.getContext())}
@@ -163,22 +202,37 @@ export function ResourceTable({ rows, phases, totalsFooter }: ResourceTableProps
           ))}
         </thead>
         <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr
-              key={row.id}
-              className="border-b border-border/60 transition-colors hover:bg-muted/30"
-            >
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="px-3 py-2.5">
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {table.getRowModel().rows.map((row) => {
+            const resource = row.original.resource;
+            const isExpanded = expandedIds.has(resource.id);
+            return (
+              <Fragment key={row.id}>
+                <tr
+                  className={clsx(
+                    'border-b border-border/60 transition-colors',
+                    isExpanded ? 'bg-muted/30' : 'hover:bg-muted/20',
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-3 py-2.5 align-top">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+                {isExpanded && (
+                  <tr className="border-b border-border bg-muted/20">
+                    <td colSpan={colCount} className="px-4 py-3">
+                      <ResourceRowExpanded resource={resource} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody>
         <tfoot className="border-t-2 border-border bg-muted/40 font-medium">
           <tr>
-            <td className="px-3 py-2.5 uppercase tracking-wide text-xs text-muted-fg">
+            <td className="px-3 py-2.5 text-xs uppercase tracking-wide text-muted-fg">
               Totals ({rows.length} {rows.length === 1 ? 'resource' : 'resources'})
             </td>
             {phases.map((p) => (
