@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "SOW Cost Calculator - M1b: chrome + routing.",
+  "description": "SOW Cost Calculator - M2a: Resource Planner (read-only).",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -17,7 +17,8 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.0",
     "zustand": "^4.5.4",
-    "clsx": "^2.1.1"
+    "clsx": "^2.1.1",
+    "@tanstack/react-table": "^8.20.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

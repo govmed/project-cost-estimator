@@ -3,16 +3,17 @@
  *
  * /                        -> redirect to the seed project's dashboard
  * /p/:projectId           -> AppShell with nested screen routes
- *   /dashboard            -> DashboardPage (real-ish)
+ *   /dashboard            -> DashboardPage (real)
+ *   /resources            -> ResourcePlannerPage (real, M2a read-only)
  *   /setup ... /audit     -> PageStub placeholders
  *
- * The project is loaded into the store by the AppBootstrap component before
- * any /p route renders.
+ * The project is loaded into the store by App.tsx before any /p route renders.
  */
 
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/ui/layout/AppShell';
 import { DashboardPage } from '@/ui/pages/DashboardPage';
+import { ResourcePlannerPage } from '@/ui/pages/ResourcePlannerPage';
 import { PageStub } from '@/ui/pages/PageStub';
 
 const SEED_PROJECT_ID = 'proj_vtx_modernization_2026';
@@ -24,6 +25,7 @@ export function AppRoutes() {
       <Route path="/p/:projectId" element={<AppShell />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="resources" element={<ResourcePlannerPage />} />
         <Route
           path="setup"
           element={
@@ -31,16 +33,6 @@ export function AppRoutes() {
               title="Project Setup"
               purpose="Define the engagement: type, phases, contingency, FX rates."
               milestone="M3"
-            />
-          }
-        />
-        <Route
-          path="resources"
-          element={
-            <PageStub
-              title="Resource Planner"
-              purpose="Build the labor cost: role x level x geography x allocation."
-              milestone="M2"
             />
           }
         />
@@ -115,7 +107,6 @@ export function AppRoutes() {
           }
         />
       </Route>
-      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
