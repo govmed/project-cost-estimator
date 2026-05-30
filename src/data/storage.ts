@@ -14,6 +14,7 @@
  */
 
 import type { Project } from '@/types/project';
+import type { Scenario } from '@/types/scenario';
 import type { ProjectId } from '@/types/ids';
 
 export interface ProjectSummary {
@@ -27,7 +28,10 @@ export interface ProjectSummary {
 
 export interface Storage {
   load(projectId: ProjectId): Promise<Project | null>;
-  save(project: Project): Promise<void>;
+  /** Optional full load — returns project + scenarios together (Phase 2). */
+  loadFull?(projectId: ProjectId): Promise<{ project: Project; scenarios: Scenario[] } | null>;
+  /** scenarios is optional for backward compat; BackendApiProvider uses it. */
+  save(project: Project, scenarios?: readonly Scenario[]): Promise<void>;
   list(): Promise<ProjectSummary[]>;
   delete(projectId: ProjectId): Promise<void>;
 }

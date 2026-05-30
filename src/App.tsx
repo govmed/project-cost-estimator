@@ -1,32 +1,54 @@
 /**
- * App - the router root.
+ * App — router root + auth gate.
  *
- * Responsibilities:
- *  - Load the seed project into the store on first mount (if empty)
- *  - Wrap everything in BrowserRouter
- *  - Render the route tree
- *
- * The actual screens and chrome live under AppShell (see routes.tsx).
+ * B2.b: In oidc mode, shows LoginPage until the user is authenticated.
+ * Keeps the token in sync with the storage provider via initStorageToken().
+ * In standalone mode, behaviour is identical to Phase 1.
  */
 
 import { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { useProjectStore } from '@/data/store';
+import { initStorageToken } from '@/data/store';
 import { loadSeed } from '@/data/seed-loader';
 import { AppRoutes } from '@/ui/routes';
+import { useAuth } from '@/auth/useAuth';
+import { LoginPage } from '@/auth/LoginPage';
+import { AUTH_MODE } from '@/auth/oidc-config';
 
 export function App() {
+  const { isAuthenticated, isLoading, accessToken } = useAuth();
   const project = useProjectStore((s) => s.project);
   const setProject = useProjectStore((s) => s.setProject);
 
+  // Keep the storage provider's token in sync with the OIDC token.
   useEffect(() => {
-    if (!project) {
-      const seed = loadSeed();
-      setProject(seed.project, seed.scenarios);
+    if (AUTH_MODE === 'oidc') {
+      initStorageToken(accessToken);
     }
-  }, [project, setProject]);
+  }, [accessToken]);
 
-  if (!project) {
+  // In OIDC mode — show login screen while loading or not authenticated.
+  if (AUTH_MODE === 'oidc') {
+    if (isLoading) {
+      return (
+        <div className="flex h-screen items-center justify-center bg-background text-muted-fg">
+          Loading…
+        </div>
+      );
+    }
+    if (!isAuthenticated) {
+      return <LoginPage />;
+    }
+  }
+
+  // Seed loader — only in standalone mode (backend provides project list in oidc mode).
+  if (AUTH_MODE === 'standalone' && !project) {
+    const seed = loadSeed();
+    setProject(seed.project, seed.scenarios);
+  }
+
+  if (!project && AUTH_MODE === 'standalone') {
     return (
       <div className="flex h-screen items-center justify-center bg-background text-muted-fg">
         Loading…

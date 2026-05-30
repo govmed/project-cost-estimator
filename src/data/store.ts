@@ -51,10 +51,26 @@ import type {
   LinkedEntity,
 } from '@/types/assumption';
 import { LocalStorageProvider } from './local-storage-provider';
+import { BackendApiProvider } from './backend-api-provider';
 import type { Storage } from './storage';
+import { AUTH_MODE } from '@/auth/oidc-config';
 import { appendAudit } from './audit-log';
 
-const storage: Storage = new LocalStorageProvider();
+// In oidc mode the token is injected at runtime by initStorageToken().
+// In standalone mode LocalStorageProvider is used directly.
+let _accessToken: string | null = null;
+export function initStorageToken(token: string | null): void {
+  _accessToken = token;
+}
+
+const storage: Storage = AUTH_MODE === 'oidc'
+  ? new BackendApiProvider(() => _accessToken)
+  : new LocalStorageProvider();
+
+// Helper: push project + current scenarios to storage on every mutation.
+function _sync(project: Project, scenarios: readonly Scenario[]): void {
+  void storage.save(project, scenarios);
+}
 
 export type ResourceField =
   | { kind: 'name'; value: string }
@@ -365,7 +381,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       scenarios,
       activeScenarioId: project.activeScenarioId,
     });
-    void storage.save(project);
+    _sync(project, scenarios);
   },
 
   setActiveScenario(scenarioId) {
@@ -403,7 +419,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'resource.allocation.update',
       resourceId,
@@ -479,7 +495,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, auditAction);
   },
 
@@ -515,7 +531,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, { kind: 'resource.add', resourceId: newId, resource: newResource });
     return newId;
   },
@@ -538,7 +554,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, { kind: 'resource.delete', resourceId, resource: removed });
   },
 
@@ -572,7 +588,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'resource.duplicate',
       fromResourceId: resourceId,
@@ -622,7 +638,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'cloud.add',
       lineItemId: newId,
@@ -649,7 +665,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'cloud.delete',
       lineItemId,
@@ -686,7 +702,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'cloud.duplicate',
       fromLineItemId: lineItemId,
@@ -818,7 +834,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'cloud.field.update',
       lineItemId,
@@ -864,7 +880,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'otherCost.add',
       lineItemId: newId,
@@ -891,7 +907,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'otherCost.delete',
       lineItemId,
@@ -928,7 +944,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'otherCost.duplicate',
       fromLineItemId: lineItemId,
@@ -1054,7 +1070,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextProject = bumpProject(state.project);
 
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'otherCost.field.update',
       lineItemId,
@@ -1148,7 +1164,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (!updated) return;
     const nextProject = bumpProject(updated);
     set({ project: nextProject });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, state.activeScenarioId ?? nextProject.activeScenarioId, {
       kind: 'project.field.update',
       field: field.kind,
@@ -1171,7 +1187,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     };
     const nextProject = bumpProject(updated);
     set({ project: nextProject });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, state.activeScenarioId ?? nextProject.activeScenarioId, {
       kind: 'project.fx.update',
       currency,
@@ -1200,7 +1216,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     };
     const nextProject = bumpProject(updated);
     set({ project: nextProject });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, state.activeScenarioId ?? nextProject.activeScenarioId, {
       kind: 'phase.add',
       phaseId: newId,
@@ -1221,7 +1237,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     };
     const nextProject = bumpProject(updated);
     set({ project: nextProject });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, state.activeScenarioId ?? nextProject.activeScenarioId, {
       kind: 'phase.delete',
       phaseId,
@@ -1285,7 +1301,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     };
     const nextProject = bumpProject(updated);
     set({ project: nextProject });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, state.activeScenarioId ?? nextProject.activeScenarioId, {
       kind: 'phase.field.update',
       phaseId,
@@ -1356,7 +1372,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextScenarios = [...state.scenarios, newScenario];
     const nextProject = bumpProject(state.project);
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, fromScenarioId, {
       kind: 'scenario.clone',
       fromScenarioId,
@@ -1394,7 +1410,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       scenarios: nextScenarios,
       activeScenarioId: nextActiveId,
     });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'scenario.delete',
       scenarioId,
@@ -1417,7 +1433,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     );
     const nextProject = bumpProject(state.project);
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'scenario.rename',
       scenarioId,
@@ -1445,7 +1461,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       updatedAt: nowIso(),
     };
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'scenario.setBase',
       oldBaseScenarioId: oldBaseId,
@@ -1478,7 +1494,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     );
     const nextProject = bumpProject(state.project);
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
 
     if (maData) {
       appendAudit(nextProject.id, scenarioId, {
@@ -1529,7 +1545,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
     const nextProject = bumpProject(state.project);
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'assumption.add',
       assumptionId: newId,
@@ -1596,7 +1612,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
     const nextProject = bumpProject(state.project);
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'assumption.update',
       assumptionId,
@@ -1623,7 +1639,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
     const nextProject = bumpProject(state.project);
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'assumption.delete',
       assumptionId,
@@ -1655,7 +1671,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const nextScenarios = replaceScenario(state.scenarios, updatedScenario);
     const nextProject = bumpProject(state.project);
     set({ project: nextProject, scenarios: nextScenarios });
-    void storage.save(nextProject);
+    _sync(nextProject, get().scenarios);
     appendAudit(nextProject.id, scenarioId, {
       kind: 'assumption.review',
       assumptionId,
