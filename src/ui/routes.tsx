@@ -2,17 +2,27 @@
  * Routes.
  *
  * /                        -> redirect to the seed project's dashboard
- * /p/:projectId           -> AppShell with nested screen routes
- *   /dashboard            -> DashboardPage (real)
- *   /resources            -> ResourcePlannerPage (real, M2a read-only)
- *   /setup ... /audit     -> PageStub placeholders
+ * /new                     -> NewProjectWizardPage
+ * /p/:projectId            -> AppShell with nested screen routes
+ *   /dashboard             -> DashboardPage
+ *   /resources             -> ResourcePlannerPage
+ *   /setup                 -> ProjectSetupPage
+ *   /cloud                 -> CloudPlannerPage
+ *   /other-costs           -> OtherCostsPlannerPage
+ *   /ma-mode               -> MAModePage
+ *   /scenarios             -> ScenariosPage
+ *   /assumptions           -> AssumptionLedgerPage
+ *   /export                -> ExportPage (lazy — heavy deps)
+ *   /audit                 -> AuditLogPage
  *
- * The project is loaded into the store by App.tsx before any /p route renders.
+ * Each screen is wrapped in an ErrorBoundary so a single-screen crash
+ * does not take down the app. (M6)
  */
 
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/ui/layout/AppShell';
+import { ErrorBoundary } from '@/ui/components/ErrorBoundary';
 import { ResourcePlannerPage } from '@/ui/pages/ResourcePlannerPage';
 import { CloudPlannerPage } from '@/ui/pages/CloudPlannerPage';
 import { OtherCostsPlannerPage } from '@/ui/pages/OtherCostsPlannerPage';
@@ -22,65 +32,133 @@ import { MAModePage } from '@/ui/pages/MAModePage';
 import { AssumptionLedgerPage } from '@/ui/pages/AssumptionLedgerPage';
 import { AuditLogPage } from '@/ui/pages/AuditLogPage';
 import { NewProjectWizardPage } from '@/ui/pages/NewProjectWizardPage';
-import { PageStub } from '@/ui/pages/PageStub';
 
-// Lazy-load the Dashboard so Recharts ships in its own chunk and isn't
-// pulled in unless the user actually visits /dashboard.
 const DashboardPage = lazy(() =>
   import('@/ui/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
 
-function DashboardLoading() {
-  return (
-    <div className="mx-auto max-w-7xl px-6 py-6 text-muted-fg">Loading dashboard…</div>
-  );
-}
-
-// Same lazy pattern for the Export Center - it pulls in xlsx (~115KB gz)
-// and jspdf + autotable (~85KB gz), which we don't want on other routes.
 const ExportPage = lazy(() =>
   import('@/ui/pages/ExportPage').then((m) => ({ default: m.ExportPage })),
 );
 
-function ExportLoading() {
+function ScreenLoader({ label }: { label: string }) {
   return (
-    <div className="mx-auto max-w-5xl px-6 py-6 text-muted-fg">Loading export center…</div>
+    <div className="mx-auto max-w-7xl px-6 py-6 text-muted-fg" aria-busy="true">
+      Loading {label}…
+    </div>
   );
 }
 
 const SEED_PROJECT_ID = 'proj_vtx_modernization_2026';
 
+function Guarded({
+  name,
+  children,
+}: {
+  name: string;
+  children: React.ReactNode;
+}) {
+  return <ErrorBoundary screenName={name}>{children}</ErrorBoundary>;
+}
+
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to={`/p/${SEED_PROJECT_ID}/dashboard`} replace />} />
-      <Route path="/new" element={<NewProjectWizardPage />} />
+      <Route
+        path="/new"
+        element={
+          <Guarded name="New Project">
+            <NewProjectWizardPage />
+          </Guarded>
+        }
+      />
       <Route path="/p/:projectId" element={<AppShell />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route
           path="dashboard"
           element={
-            <Suspense fallback={<DashboardLoading />}>
-              <DashboardPage />
-            </Suspense>
+            <Guarded name="Dashboard">
+              <Suspense fallback={<ScreenLoader label="dashboard" />}>
+                <DashboardPage />
+              </Suspense>
+            </Guarded>
           }
         />
-        <Route path="resources" element={<ResourcePlannerPage />} />
-        <Route path="setup" element={<ProjectSetupPage />} />
-        <Route path="cloud" element={<CloudPlannerPage />} />
-        <Route path="other-costs" element={<OtherCostsPlannerPage />} />
-        <Route path="ma-mode" element={<MAModePage />} />
-        <Route path="scenarios" element={<ScenariosPage />} />
-        <Route path="assumptions" element={<AssumptionLedgerPage />} />
+        <Route
+          path="resources"
+          element={
+            <Guarded name="Resource Planner">
+              <ResourcePlannerPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="setup"
+          element={
+            <Guarded name="Project Setup">
+              <ProjectSetupPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="cloud"
+          element={
+            <Guarded name="Cloud Planner">
+              <CloudPlannerPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="other-costs"
+          element={
+            <Guarded name="Other Costs">
+              <OtherCostsPlannerPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="ma-mode"
+          element={
+            <Guarded name="M&A Mode">
+              <MAModePage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="scenarios"
+          element={
+            <Guarded name="Scenarios">
+              <ScenariosPage />
+            </Guarded>
+          }
+        />
+        <Route
+          path="assumptions"
+          element={
+            <Guarded name="Assumption Ledger">
+              <AssumptionLedgerPage />
+            </Guarded>
+          }
+        />
         <Route
           path="export"
           element={
-            <Suspense fallback={<ExportLoading />}>
-              <ExportPage />
-            </Suspense>
+            <Guarded name="Export Center">
+              <Suspense fallback={<ScreenLoader label="export center" />}>
+                <ExportPage />
+              </Suspense>
+            </Guarded>
           }
         />
-        <Route path="audit" element={<AuditLogPage />} />
+        <Route
+          path="audit"
+          element={
+            <Guarded name="Audit Log">
+              <AuditLogPage />
+            </Guarded>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

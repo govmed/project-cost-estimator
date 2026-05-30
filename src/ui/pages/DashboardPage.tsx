@@ -27,11 +27,13 @@ import {
   BreakdownBars,
   entriesFromBreakdown,
 } from '@/ui/components/dashboard/BreakdownBars';
+import { WelcomeCoachmark, useCoachmarkDismissed } from '@/ui/components/Coachmark';
 
 export function DashboardPage() {
   const project = useProjectStore((s) => s.project);
   const totals = useScenarioTotals();
   const openDefensibility = useDefensibilityStore((s) => s.open);
+  const { dismissed, dismiss } = useCoachmarkDismissed();
 
   if (!project || !totals) {
     return <div className="px-8 py-12 text-muted-fg">No active scenario.</div>;
@@ -41,6 +43,8 @@ export function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-6 space-y-8">
+      {!dismissed && <WelcomeCoachmark onDismiss={dismiss} />}
+
       <div>
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-fg">

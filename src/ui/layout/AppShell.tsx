@@ -1,18 +1,7 @@
 /**
  * AppShell - the persistent chrome wrapper.
  *
- * Layout:
- *   +---------------------------------------+
- *   |             TopRail                   |
- *   +--------+------------------------------+
- *   | Left   |                              |
- *   | Rail   |   <Outlet /> (current page)  |
- *   |        |                              |
- *   +--------+------------------------------+
- *
- * The global defensibility drawer (M5d-2) overlays from the right edge
- * when any KPI is opened. It's mounted once here so every page surface
- * can open it via useDefensibilityStore().open(kind).
+ * M6: Added aria-label to main landmark.
  */
 
 import { Outlet } from 'react-router-dom';
@@ -26,7 +15,11 @@ export function AppShell() {
       <TopRail />
       <div className="flex flex-1 overflow-hidden">
         <LeftRail />
-        <main className="flex-1 overflow-auto">
+        <main
+          id="main-content"
+          aria-label="Main content"
+          className="flex-1 overflow-auto"
+        >
           <Outlet />
         </main>
       </div>

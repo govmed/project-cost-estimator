@@ -1,9 +1,8 @@
 /**
  * LeftRail - persistent navigation.
  *
- * Lists the nav items, highlights the active route, shows count badges,
- * and collapses to icons-only via a toggle. M&A Mode item only appears
- * when the engagement context calls for it.
+ * M6: Added aria-label to nav landmark, aria-label to collapse toggle,
+ *     aria-expanded on collapsed state.
  */
 
 import { useState } from 'react';
@@ -28,6 +27,7 @@ export function LeftRail() {
 
   return (
     <nav
+      aria-label="Project navigation"
       className={clsx(
         'flex flex-col border-r border-border bg-muted/20 transition-all',
         collapsed ? 'w-14' : 'w-56',
@@ -38,18 +38,20 @@ export function LeftRail() {
           to="/new"
           className={({ isActive }) =>
             clsx(
-              'flex items-center gap-3 px-4 py-2 text-sm transition-colors',
+              'flex items-center gap-3 px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent',
               isActive
                 ? 'border-l-2 border-accent bg-accent/10 font-medium text-foreground'
                 : 'border-l-2 border-transparent text-muted-fg hover:bg-muted hover:text-foreground',
             )
           }
           title={collapsed ? 'New Project' : undefined}
+          aria-label={collapsed ? 'New Project' : undefined}
         >
-          <span className="w-5 text-center text-base leading-none">＋</span>
+          <span className="w-5 text-center text-base leading-none" aria-hidden="true">＋</span>
           {!collapsed && <span className="flex-1">New Project</span>}
         </NavLink>
       </div>
+
       <div className="flex-1 py-2">
         {visibleItems.map((item) => {
           const count = item.count ? item.count(activeScenario) : null;
@@ -59,20 +61,26 @@ export function LeftRail() {
               to={`/p/${projectId}/${item.path}`}
               className={({ isActive }) =>
                 clsx(
-                  'flex items-center gap-3 px-4 py-2 text-sm transition-colors',
+                  'flex items-center gap-3 px-4 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent',
                   isActive
                     ? 'border-l-2 border-accent bg-accent/10 font-medium text-foreground'
                     : 'border-l-2 border-transparent text-muted-fg hover:bg-muted hover:text-foreground',
                 )
               }
               title={collapsed ? item.label : undefined}
+              aria-label={collapsed ? item.label : undefined}
             >
-              <span className="w-5 text-center text-base leading-none">{item.glyph}</span>
+              <span className="w-5 text-center text-base leading-none" aria-hidden="true">
+                {item.glyph}
+              </span>
               {!collapsed && (
                 <>
                   <span className="flex-1">{item.label}</span>
                   {count !== null && count !== undefined && (
-                    <span className="rounded bg-muted px-1.5 text-xs text-muted-fg">
+                    <span
+                      className="rounded bg-muted px-1.5 text-xs text-muted-fg"
+                      aria-label={`${count} items`}
+                    >
                       {count}
                     </span>
                   )}
@@ -86,7 +94,9 @@ export function LeftRail() {
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
-        className="border-t border-border px-4 py-2 text-left text-xs text-muted-fg hover:bg-muted"
+        aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+        aria-expanded={!collapsed}
+        className="border-t border-border px-4 py-2 text-left text-xs text-muted-fg hover:bg-muted focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent"
       >
         {collapsed ? '»' : '« Collapse'}
       </button>

@@ -4,20 +4,42 @@
  * Row 1: project name + version + status pill
  * Row 2: scenario chooser (left) + KPI strip (center) + Export/Audit (right)
  *
- * M1b renders Export/Audit as visual stubs (no behavior yet).
+ * M6: Export and Audit buttons now navigate to real routes.
+ *     Added aria-label to header landmark.
  */
 
+import { useNavigate, useParams } from 'react-router-dom';
 import { useProjectStore } from '@/data/store';
+import { readAudit } from '@/data/audit-log';
 import { StatusPill } from '@/ui/components/StatusPill';
 import { KpiStrip } from '@/ui/components/KpiStrip';
 import { ScenarioChooser } from './ScenarioChooser';
 
 export function TopRail() {
   const project = useProjectStore((s) => s.project);
+  const { projectId } = useParams();
+  const navigate = useNavigate();
+
   if (!project) return null;
 
+  const auditCount = (() => {
+    try {
+      return readAudit(project.id).length;
+    } catch {
+      return 0;
+    }
+  })();
+
+  function goExport() {
+    navigate(`/p/${projectId ?? project!.id}/export`);
+  }
+
+  function goAudit() {
+    navigate(`/p/${projectId ?? project!.id}/audit`);
+  }
+
   return (
-    <header className="border-b border-border bg-muted/30">
+    <header aria-label="Application header" className="border-b border-border bg-muted/30">
       {/* Row 1 */}
       <div className="flex items-center justify-between px-6 py-2.5">
         <div className="flex items-center gap-3">
@@ -33,20 +55,33 @@ export function TopRail() {
         <ScenarioChooser />
         <KpiStrip />
         <div className="flex items-center gap-2">
-          <StubButton label="Export" />
-          <StubButton label="Audit" badge={3} />
+          <NavButton label="Export" onClick={goExport} />
+          <NavButton
+            label="Audit"
+            badge={auditCount > 0 ? Math.min(auditCount, 999) : undefined}
+            onClick={goAudit}
+          />
         </div>
       </div>
     </header>
   );
 }
 
-function StubButton({ label, badge }: { label: string; badge?: number }) {
+function NavButton({
+  label,
+  badge,
+  onClick,
+}: {
+  label: string;
+  badge?: number;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
-      className="relative rounded-md border border-border px-3 py-1 text-sm text-muted-fg hover:bg-muted disabled:opacity-60"
-      title={`${label} (coming in a later milestone)`}
+      onClick={onClick}
+      aria-label={badge !== undefined ? `${label} (${badge} entries)` : label}
+      className="relative rounded-md border border-border px-3 py-1 text-sm text-muted-fg hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
     >
       {label}
       {badge !== undefined && (
