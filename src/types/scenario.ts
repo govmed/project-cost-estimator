@@ -48,6 +48,13 @@ export interface MAModeData {
   synergyTargetAnnual?: number;
   synergyRealizationMonths?: number;
   oneTimeIntegrationCost?: number;
+
+  /**
+   * When true the overlay's net impact flows into the pricing chain.
+   * Positive net cost raises finalPrice; net synergy lowers it.
+   * Default false — overlay stays in "preview" mode until opted in.
+   */
+  includeInPrice?: boolean;
 }
 
 export interface Scenario {

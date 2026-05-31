@@ -75,10 +75,24 @@ export function calculate(project: Project, scenario: Scenario): ScenarioTotals 
     project.baseCurrency,
   );
 
-  // 3. Pricing math.
+  // 3. M&A overlay (computed before pricing so opt-in can affect finalPrice).
+  const maOverlayPreview = calculateMAOverlay(project, scenario, {
+    baseRunRateMonthly: 0, // placeholder — run-rate not yet computed at this point
+    baseInBuildResourceCost: resourcesSubtotal.amount,
+  });
+
+  // If the scenario opts in (includeInPrice=true), add overlay net impact to baseCost.
+  const maAdjustment =
+    scenario.maData?.includeInPrice && maOverlayPreview
+      ? maOverlayPreview.netImpact.amount
+      : 0;
+
+  const adjustedBaseCost = money(baseCost.amount + maAdjustment, project.baseCurrency);
+
+  // 4. Pricing math (uses adjustedBaseCost when MA is opted in).
   const eff = resolveOverrides(project, scenario);
   const pricing = applyPricing(
-    baseCost,
+    adjustedBaseCost,
     eff.contingencyPct,
     eff.managementReservePct,
     eff.targetMarginPct,
@@ -86,7 +100,7 @@ export function calculate(project: Project, scenario: Scenario): ScenarioTotals 
     fx,
   );
 
-  // 4. Effective blended rate.
+  // 5. Effective blended rate.
   //    Defined as the resource-portion of price divided by total billable hours.
   //    We approximate: scale finalPrice by the resource share of baseCost.
   const totalBillableHours = sumBillableHours(resourceTotals);
@@ -98,7 +112,7 @@ export function calculate(project: Project, scenario: Scenario): ScenarioTotals 
     ? money(resourcePortionOfPrice / totalBillableHours, project.baseCurrency)
     : money(0, project.baseCurrency);
 
-  // 5. Time-phased curves.
+  // 6. Time-phased curves.
   const burnCurve = buildBurnCurve(
     scenario.resources,
     resourceTotals,
@@ -114,14 +128,14 @@ export function calculate(project: Project, scenario: Scenario): ScenarioTotals 
     totalProjectMonths,
   );
 
-  // 6. Run-rate projection.
+  // 7. Run-rate projection.
   const runRateMonthly = sumRunRateMonthly(cloudTotals, otherCostTotals, fx);
   const runRateAnnual = runRateMonthly.amount * 12;
   const runRateYear1 = money(runRateAnnual, project.baseCurrency);
   const runRateYear2 = money(runRateAnnual, project.baseCurrency);
   const runRateYear3 = money(runRateAnnual, project.baseCurrency);
 
-  // 7. Breakdowns.
+  // 8. Breakdowns.
   const byPhase = rollUpByPhase(
     project,
     resourceTotals,
@@ -175,7 +189,9 @@ export function calculate(project: Project, scenario: Scenario): ScenarioTotals 
     byCloudProvider,
     byCloudCategory,
 
-    // M4d: optional M&A overlay (preview math; doesn't affect finalPrice)
+    // M&A overlay — recomputed with the real run-rate now available.
+    // includeInPrice scenarios use adjustedBaseCost in pricing (above);
+    // the overlay itself is always the full calculation.
     maOverlay: calculateMAOverlay(project, scenario, {
       baseRunRateMonthly: runRateMonthly.amount,
       baseInBuildResourceCost: resourcesSubtotal.amount,
