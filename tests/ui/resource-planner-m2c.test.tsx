@@ -68,7 +68,8 @@ describe('Resource Planner M2c — add resource', () => {
     await user.selectOptions(within(dialog).getByLabelText(/Geography/i), 'US-Onshore');
 
     // Rate preview should now be visible
-    expect(within(dialog).getByText(/From rate card/i)).toBeInTheDocument();
+    // Rate preview section visible (shows bill/cost rate)
+    expect(within(dialog).getByText(/Bill:/i)).toBeInTheDocument();
 
     // Click confirm
     await user.click(within(dialog).getByRole('button', { name: 'Add resource' }));

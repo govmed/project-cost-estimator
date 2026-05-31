@@ -23,6 +23,7 @@ import {
   lookupRate,
   type RateCardMatch,
 } from '@/data/rate-card-lookup';
+import { resolveRate } from '@/data/api-rate-card';
 import type { NewResourceInput } from '@/data/store';
 
 export interface AddResourceModalProps {
@@ -41,7 +42,9 @@ export function AddResourceModal({ isOpen, onClose, onAdd }: AddResourceModalPro
   const [levels, setLevels] = useState<SkillLevel[]>([]);
   const [geos, setGeos] = useState<Geography[]>([]);
   const [rateMatch, setRateMatch] = useState<RateCardMatch | null>(null);
+  const [rateSource, setRateSource] = useState<string | null>(null);
   const [loadingCard, setLoadingCard] = useState(false);
+  const [loadingRate, setLoadingRate] = useState(false);
 
   const firstInputRef = useRef<HTMLSelectElement>(null);
 
@@ -54,6 +57,7 @@ export function AddResourceModal({ isOpen, onClose, onAdd }: AddResourceModalPro
     setLevels([]);
     setGeos([]);
     setRateMatch(null);
+    setRateSource(null);
     setLoadingCard(true);
     let cancelled = false;
     allRoles().then((r) => {
@@ -80,9 +84,38 @@ export function AddResourceModal({ isOpen, onClose, onAdd }: AddResourceModalPro
   }, [role, level]);
 
   useEffect(() => {
-    if (!role || !level || !geography) { setRateMatch(null); return; }
+    if (!role || !level || !geography) { setRateMatch(null); setRateSource(null); return; }
     let cancelled = false;
-    lookupRate(role, level, geography).then((m) => { if (!cancelled) setRateMatch(m); });
+    setLoadingRate(true);
+
+    async function resolve() {
+      // 1. Try local seed rate card first (fast, no network).
+      const local = await lookupRate(role as string, level as string, geography as string);
+      if (cancelled) return;
+      if (local) {
+        setRateMatch(local);
+        setRateSource('seed rate card');
+        setLoadingRate(false);
+        return;
+      }
+      // 2. Fall back to API rate card lookup (OIDC mode; no-op in standalone).
+      const api = await resolveRate(
+        role as string,
+        level as import('@/types/resource').SkillLevel,
+        geography as import('@/types/resource').Geography,
+      );
+      if (cancelled) return;
+      if (api) {
+        setRateMatch({ billRate: api.billRate, internalCostRate: api.internalCostRate } as RateCardMatch);
+        setRateSource(api.source);
+      } else {
+        setRateMatch(null);
+        setRateSource(null);
+      }
+      setLoadingRate(false);
+    }
+
+    void resolve();
     return () => { cancelled = true; };
   }, [role, level, geography]);
 
@@ -95,16 +128,17 @@ export function AddResourceModal({ isOpen, onClose, onAdd }: AddResourceModalPro
 
   if (!isOpen) return null;
 
-  const canSubmit = !!(role && level && geography && rateMatch);
+  const canSubmit = !!(role && level && geography) && !loadingRate;
 
   function handleSubmit() {
-    if (!canSubmit || !rateMatch) return;
+    if (!canSubmit) return;
+    const fallbackRate = { amount: 0, currency: 'USD' as const };
     onAdd({
       role: role as Role,
       skillLevel: level as SkillLevel,
       geography: geography as Geography,
-      billRate: rateMatch.billRate,
-      internalCostRate: rateMatch.internalCostRate,
+      billRate: rateMatch?.billRate ?? fallbackRate,
+      internalCostRate: rateMatch?.internalCostRate ?? fallbackRate,
       name: name.trim() || undefined,
       defaultAllocationPct: 100,
     });
@@ -185,14 +219,29 @@ export function AddResourceModal({ isOpen, onClose, onAdd }: AddResourceModalPro
               />
             </div>
 
-            {rateMatch && (
+            {loadingRate && role && level && geography && (
+              <div className="text-xs text-muted-fg">Looking up rate…</div>
+            )}
+
+            {!loadingRate && rateMatch && (
               <div className="rounded-md border border-border bg-muted/30 p-3 text-sm">
-                <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-fg">From rate card</div>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-fg">Rate card</span>
+                  {rateSource && (
+                    <span className="text-[10px] text-muted-fg/70">{rateSource}</span>
+                  )}
+                </div>
                 <div className="flex gap-6 font-mono tabular-money">
                   <span>Bill: <span className="font-semibold text-foreground">{formatMoney(rateMatch.billRate)}/hr</span></span>
                   <span className="text-muted-fg">Cost: {formatMoney(rateMatch.internalCostRate)}/hr</span>
                 </div>
-                <p className="mt-1 text-xs text-muted-fg">You can override either rate after adding by expanding the row.</p>
+                <p className="mt-1 text-xs text-muted-fg">Override either rate after adding by expanding the row.</p>
+              </div>
+            )}
+
+            {!loadingRate && !rateMatch && role && level && geography && (
+              <div className="rounded-md border border-border bg-status-warn/10 p-3 text-xs text-muted-fg">
+                No rate found for this combination. You can set rates manually after adding.
               </div>
             )}
           </div>

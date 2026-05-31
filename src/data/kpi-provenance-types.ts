@@ -67,4 +67,7 @@ export interface KpiProvenance {
   math: FormulaLine[];
   assumptions: Assumption[];
   inputs: InputRef[];
+  /** Entity type/id for comments — defaults to 'kpi' + title if not set. */
+  entityType?: string;
+  entityId?: string;
 }

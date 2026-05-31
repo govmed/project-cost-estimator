@@ -15,12 +15,14 @@
  *   Inputs   - navigable links to the source screens
  */
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { KpiProvenance, FormulaLine } from '@/data/kpi-provenance-types';
 import { formatMoney } from '@/ui/format';
 import { AssumptionSourceBadge } from '@/ui/components/assumptions/AssumptionSourceBadge';
 import { AssumptionRiskBadge } from '@/ui/components/assumptions/AssumptionRiskBadge';
+import { CommentThread } from '@/ui/components/comments/CommentThread';
+import { useProjectStore } from '@/data/store';
 
 export interface DefensibilityDrawerProps {
   /** Pass null to render closed. Pass a built KpiProvenance to render open. */
@@ -28,8 +30,14 @@ export interface DefensibilityDrawerProps {
   onClose: () => void;
 }
 
+type DrawerTab = 'derivation' | 'comments';
+
 export function DefensibilityDrawer({ provenance, onClose }: DefensibilityDrawerProps) {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<DrawerTab>('derivation');
+  const projectId = useProjectStore((s) => s.project?.id ?? '');
+
+  useEffect(() => { setActiveTab('derivation'); }, [provenance?.title]);
 
   // Escape to close
   useEffect(() => {
@@ -79,7 +87,35 @@ export function DefensibilityDrawer({ provenance, onClose }: DefensibilityDrawer
           </button>
         </div>
 
-        <div className="space-y-6 px-5 py-4">
+        {/* Tabs */}
+        <div className="flex border-b border-border">
+          {(['derivation', 'comments'] as DrawerTab[]).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={`px-5 py-2 text-xs font-medium capitalize transition-colors ${
+                activeTab === tab
+                  ? 'border-b-2 border-accent text-foreground'
+                  : 'text-muted-fg hover:text-foreground'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'comments' && projectId && (
+          <div className="px-5 py-4">
+            <CommentThread
+              projectId={projectId}
+              entityType={provenance.entityType ?? 'kpi'}
+              entityId={provenance.entityId ?? provenance.title}
+            />
+          </div>
+        )}
+
+        {activeTab === 'derivation' && <div className="space-y-6 px-5 py-4">
           {/* Hero */}
           <section>
             <div className="font-mono text-2xl tabular-money text-foreground">
@@ -173,7 +209,8 @@ export function DefensibilityDrawer({ provenance, onClose }: DefensibilityDrawer
               ))}
             </ul>
           </section>
-        </div>
+        </div>}
+
       </aside>
     </div>
   );
