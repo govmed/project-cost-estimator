@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { useProjectStore } from '@/data/store';
 import { initStorageToken } from '@/data/store';
+import { setGlobalToken } from '@/data/api-cloud-catalog';
 import { loadSeed } from '@/data/seed-loader';
 import { AppRoutes } from '@/ui/routes';
 import { useAuth } from '@/auth/useAuth';
@@ -21,10 +22,11 @@ export function App() {
   const project = useProjectStore((s) => s.project);
   const setProject = useProjectStore((s) => s.setProject);
 
-  // Keep the storage provider's token in sync with the OIDC token.
+  // Keep the storage provider's token and global API token in sync.
   useEffect(() => {
     if (AUTH_MODE === 'oidc') {
       initStorageToken(accessToken);
+      setGlobalToken(accessToken);
     }
   }, [accessToken]);
 

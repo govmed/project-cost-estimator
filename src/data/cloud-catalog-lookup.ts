@@ -1,17 +1,13 @@
 /**
  * Cloud catalog lookup.
  *
- * Reads the AWS and Azure pricing seed JSONs and exposes searchable lists
- * of services / SKUs with their unit costs. The catalog files are large
- * (115 + 98 entries), so we lazy-load on first access — same pattern as
- * rate-card-lookup.ts.
- *
- * Phase 2 will swap the file imports for live AWS Pricing API and Azure
- * Retail Prices API calls behind the same interface.
+ * B5.c: In OIDC mode, tries the API backend first (live Azure pricing).
+ * Falls back to the bundled seed JSON files in standalone mode or on error.
  */
 
 import type { CloudProvider, CloudCategory, PricingModel, Environment } from '@/types/cloud';
 import type { Money, CurrencyCode } from '@/types/money';
+import { getCatalogFromApi } from './api-cloud-catalog';
 
 export interface CatalogEntry {
   category: CloudCategory;
@@ -40,6 +36,13 @@ const loading: Partial<Record<CloudProvider, Promise<ProviderCatalog>>> = {};
 async function load(provider: CloudProvider): Promise<ProviderCatalog> {
   if (cached[provider]) return cached[provider]!;
   if (loading[provider]) return loading[provider]!;
+
+  // B5.c: try live API first (OIDC mode); fall through to seed on failure.
+  const apiCatalog = await getCatalogFromApi(provider);
+  if (apiCatalog) {
+    cached[provider] = apiCatalog;
+    return apiCatalog;
+  }
 
   let promise: Promise<ProviderCatalog>;
   if (provider === 'aws') {
